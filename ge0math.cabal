@@ -1,0 +1,17 @@
+cabal-version:      3.0
+name:               ge0math
+version:            0.1.0.0
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable ge0math
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base ^>=4.17.0.0
+                    , happstack-lite
+    hs-source-dirs:   app
+    default-language: GHC2021
