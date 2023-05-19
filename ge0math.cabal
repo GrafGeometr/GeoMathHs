@@ -9,9 +9,25 @@ common warnings
 executable ge0math
     import:           warnings
     main-is:          Main.hs
-    -- other-modules:
-    -- other-extensions:
-    build-depends:    base ^>=4.17.0.0
-                    , happstack-lite
+    other-modules:    Types
+                    , DB
+                    , App
+    default-extensions: TemplateHaskell
+                    , QuasiQuotes
+                    , OverloadedStrings
+                    , BlockArguments
+                    , RecordWildCards
+    build-depends:    base ^>=4.16.0.0
+                    , template-haskell
+                    , happstack-server
+                    , happstack-hsp
+                    , hsp
+                    , hsx2hs
+                    , text
+                    , password
+                    , mtl
+                    , containers
+                    , lens
+                    , directory
     hs-source-dirs:   app
     default-language: GHC2021
