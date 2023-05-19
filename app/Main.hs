@@ -81,7 +81,7 @@ newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pas
     return $ "/profile/"<>show userId
 
 editProfile :: App Response
-editProfile = withUser $ \User{..} ->
+editProfile = withUser \User{..} ->
     form ["newName", "newEmail"] (\[newName, newEmail] -> [page|
 <form action="/profile/edit" method="post">
     <label for="name">Имя:</label>

@@ -35,6 +35,7 @@ import Happstack.Server.HSP.HTML (defaultTemplate)
 import Language.Haskell.HSX.QQ (hsx)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import Text.Read (readMaybe)
+import System.Directory (createDirectoryIfMissing)
 
 instance IsString Response where
     fromString = toResponse
@@ -57,6 +58,7 @@ instance MonadFail App where
 
 runApp :: App Response -> IO ()
 runApp x = do
+    createDirectoryIfMissing True "db"
     dbs <- DBs <$> initDB "users" <*> initDB "emails"
     ref <- newIORef dbs
     simpleHTTP nullConf $ do
