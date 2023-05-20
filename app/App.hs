@@ -1,17 +1,20 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module App (
     module Happstack.Server,
     module Types,
     module DB,
-    module HSP,
+    module HSP, HSPT,
     msum, optional, guard, when, fromMaybe, isNothing,
-    Data.Text.length, unpack,
-    
+    Data.Text.length, pack, unpack, splitOn,
+
     users, emails,
     App, runApp,
-    page, form, (?=),
+    hsx, page, form, (?=),
     newCookie, currentUser, withUser,
     hashPass, checkPass,
+    tryQuery,
 ) where
 
 import DB
@@ -27,7 +30,7 @@ import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
 import Data.String (IsString (..))
-import Data.Text (Text, intercalate, length, null, unpack, pack)
+import Data.Text (Text, intercalate, length, null, unpack, pack, splitOn)
 import Happstack.Server
 import HSP
 import HSP.Monad (HSPT(..))
@@ -43,6 +46,7 @@ instance IsString Response where
 data DBs = DBs
     { _users :: DB (Id User) User
     , _emails :: DB Text (Id User)
+    , _archive :: DB (Id Problem) Problem
     }
 makeLenses ''DBs
 
@@ -59,7 +63,7 @@ instance MonadFail App where
 runApp :: App Response -> IO ()
 runApp x = do
     createDirectoryIfMissing True "db"
-    dbs <- DBs <$> initDB "users" <*> initDB "emails"
+    dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "archive"
     ref <- newIORef dbs
     simpleHTTP nullConf $ do
         decodeBody $ defaultBodyPolicy "/tmp/" 4096 4096 4096
@@ -77,6 +81,9 @@ instance MonadDB (Id User) User App where
 
 instance MonadDB Text (Id User) App where
     stateDB = appStateDB emails
+
+instance MonadDB (Id Problem) Problem App where
+    stateDB = appStateDB archive
 
 newCookie :: String -> String -> App ()
 newCookie name value = addCookie (MaxAge 30000000) $ mkCookie name value
@@ -114,13 +121,16 @@ checkPass pass hash = case checkPassword (mkPassword pass) hash of
 currentUser :: App (Maybe (Id User))
 currentUser = readMaybe <$> lookCookieValue "userId"
 
-withUser :: (User -> App Response) -> App Response
+withUser :: (Id User -> User -> App Response) -> App Response
 withUser f = msum
     [ do
         Just i <- currentUser
         pass <- lookCookieValue "pass"
         Just User{..} <- query @(Id User) i
         guard $ checkPass (pack pass) passwordHash
-        f User{..}
+        f i User{..}
     , seeOther ("/signin" :: String) $ toResponse ()
     ]
+
+tryQuery :: MonadDB k v App => k -> (v -> App Response) -> App Response
+tryQuery k f = query k >>= maybe (notFound $ toResponse ()) f

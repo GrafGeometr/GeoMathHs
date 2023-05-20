@@ -2,12 +2,18 @@ module Types where
 
 import Data.Text (Text)
 import Data.Password.Bcrypt (Bcrypt, PasswordHash)
+import Happstack.Server (FromReqURI)
 
-import DB (Id)
+newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI)
 
 data User = User
-    { userId :: Id User
-    , name :: Text
+    { name :: Text
     , email :: Text
     , passwordHash :: PasswordHash Bcrypt
+    } deriving (Show, Read)
+
+data Problem = Problem
+    { condition :: Text
+    , solution :: Text
+    , problemTags :: [Tag]
     } deriving (Show, Read)

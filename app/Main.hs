@@ -11,6 +11,10 @@ main = runApp $ msum
         , dir "new" newProfile
         , dir "edit" editProfile
         ]
+    , dir "problem" $ msum
+        [ path problem
+        , dir "new" newProblem
+        ]
     , currentUser >>= maybe newProfile profile
     ]
 
@@ -39,11 +43,14 @@ signin = form ["email", "pass"] (\[email, pass] -> [page|
     return $ "/profile/"<>show userId
 
 profile :: Id User -> App Response
-profile n = query n >>=
-    maybe (notFound "User with given id doesn't exist") \User{..} -> currentUser >>= \u -> [page|
+profile n = tryQuery n \User{..} -> currentUser >>= \u -> [page|
 <h1><% name %></h1>
 <p><% email %></p>
-<% if u == Just n then <% <a href="/profile/edit">Редактировать</a> %> else <% () %> %>
+<% if u == Just n then <% <%>
+    <a href="/profile/edit">Редактировать</a>
+    <br/>
+    <a href="/problem/new">Создать задачу</a>
+</%> %> else <% () %> %>
 |]
 
 newProfile :: App Response
@@ -72,7 +79,7 @@ newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pas
     guard $ pass1 == pass2 && App.length pass1 >= 8
     
     passwordHash <- hashPass pass1
-    User{userId} <- insert $ \userId -> User{..}
+    userId <- insert User{..}
     update email userId
 
     newCookie "userId" $ show userId
@@ -81,7 +88,7 @@ newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pas
     return $ "/profile/"<>show userId
 
 editProfile :: App Response
-editProfile = withUser \User{..} ->
+editProfile = withUser \userId User{..} ->
     form ["newName", "newEmail"] (\[newName, newEmail] -> [page|
 <form action="/profile/edit" method="post">
     <label for="name">Имя:</label>
@@ -104,3 +111,60 @@ editProfile = withUser \User{..} ->
     update userId User{email = newEmail, name = newName, ..}
     
     return $ "/profile/"<>show userId
+
+tagsXML :: [Tag] -> XMLGenT (HSPT XML App) XML
+tagsXML xs = [hsx|
+<table>
+    <tr>
+        <% map (\tag -> <th><% tagName tag %></th>) xs %>
+    </tr>
+</table>
+|]
+
+problemXML :: Problem -> XMLGenT (HSPT XML App) [ChildType (HSPT XML App)] -> XMLGenT (HSPT XML App) [ChildType (HSPT XML App)]
+problemXML Problem{..} sol = [hsx|
+<%>
+    <h1>Условие</h1>
+    <p><% condition %></p>
+    <% sol %>
+    <% tagsXML problemTags %>
+</%>
+|]
+
+problem :: Id Problem -> App Response
+problem n = tryQuery n \p -> msum
+    [ nullDir >> [page|
+<% problemXML p
+    <%>
+        <a href=("/problem/"<>pack (show n)<>"/solution")>Решение</a>
+    </%>
+%> |]
+    , dir "solution" [page|
+<% problemXML p
+    <%>
+        <h1>Решение</h1>
+        <p><% solution p %></p>
+    </%>
+%> |]
+    ]
+
+newProblem :: App Response
+newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags] -> [page|
+<form action="/problem/new" method="POST">
+    <label for="condition">Условие</label>
+    <input type="text" name="condition" required="required" ("value" ?= condition)/>
+    <br/>
+
+    <label for="solution">Решение</label>
+    <input type="text" name="solution" required="required" ("value" ?= solution)/>
+    <br/>
+
+    <label for="tags">Теги</label>
+    <input type="text" name="tags" required="required" ("value" ?= tags)/>
+    <br/>
+
+    <input type="submit" value="Создать"/>
+</form>
+|]) \[condition, solution, tags] -> do
+    problemId <- insert Problem{problemTags = Tag <$> splitOn " " tags, ..}
+    return $ "/problem/"<>show problemId

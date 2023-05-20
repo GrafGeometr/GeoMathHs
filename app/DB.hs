@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
@@ -53,9 +52,9 @@ delete' k = values %= M.delete k
 add :: forall k v m. MonadDB k v m => DBAction k v -> m ()
 add x = stateDB (use @(DB k v) path) >>= liftIO . flip appendFile (show x<>"\n")
 
-insert :: forall a m. MonadDB (Id a) a m => (Id a -> a) -> m a
-insert f = stateDB @_ @a (uses values $ maybe (Id 1) (succ . fst) . M.lookupMax) >>= \k ->
-    let v = f k in v <$ update k v
+insert :: forall a m. MonadDB (Id a) a m => a -> m (Id a)
+insert v = stateDB @_ @a (uses values $ maybe (Id 1) (succ . fst) . M.lookupMax) >>= \k ->
+    k <$ update k v
 
 update :: MonadDB k v m => k -> v -> m ()
 update k v = do

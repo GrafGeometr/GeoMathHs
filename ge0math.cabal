@@ -17,6 +17,7 @@ executable ge0math
                     , OverloadedStrings
                     , BlockArguments
                     , RecordWildCards
+                    , DerivingStrategies
     build-depends:    base ^>=4.16.0.0
                     , template-haskell
                     , happstack-server
