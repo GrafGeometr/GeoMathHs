@@ -11,6 +11,7 @@ executable ge0math
     main-is:          Main.hs
     other-modules:    Types
                     , DB
+                    , OrderedDB
                     , App
     default-extensions: TemplateHaskell
                     , QuasiQuotes
@@ -30,5 +31,6 @@ executable ge0math
                     , containers
                     , lens
                     , directory
+                    , time
     hs-source-dirs:   app
     default-language: GHC2021

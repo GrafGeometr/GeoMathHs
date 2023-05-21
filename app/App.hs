@@ -5,9 +5,11 @@ module App (
     module Happstack.Server,
     module Types,
     module DB,
+    module OrderedDB,
     module HSP, HSPT,
     msum, optional, guard, when, fromMaybe, isNothing,
     Data.Text.length, pack, unpack, splitOn,
+    liftIO, getCurrentTime, addUTCTime, nominalDay,
 
     users, emails,
     App, runApp,
@@ -18,6 +20,7 @@ module App (
 ) where
 
 import DB
+import OrderedDB
 import Types
 
 import Control.Lens (makeLenses, Lens', Zoom(..))
@@ -39,6 +42,7 @@ import Language.Haskell.HSX.QQ (hsx)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import Text.Read (readMaybe)
 import System.Directory (createDirectoryIfMissing)
+import Data.Time (UTCTime, getCurrentTime, addUTCTime, nominalDay)
 
 instance IsString Response where
     fromString = toResponse
@@ -46,7 +50,8 @@ instance IsString Response where
 data DBs = DBs
     { _users :: DB (Id User) User
     , _emails :: DB Text (Id User)
-    , _archive :: DB (Id Problem) Problem
+    , _problems :: DB (Id Problem) Problem
+    , _archive :: OrderedDB (UTCTime, Id Problem)
     }
 makeLenses ''DBs
 
@@ -63,13 +68,13 @@ instance MonadFail App where
 runApp :: App Response -> IO ()
 runApp x = do
     createDirectoryIfMissing True "db"
-    dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "archive"
+    dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "problems" <*> initOrderedDB "archive"
     ref <- newIORef dbs
     simpleHTTP nullConf $ do
         decodeBody $ defaultBodyPolicy "/tmp/" 4096 4096 4096
         unApp x `runReaderT` ref
 
-appStateDB :: Lens' DBs (DB k v) -> State (DB k v) a -> App a
+appStateDB :: Lens' DBs a -> State a b -> App b
 appStateDB lens s = do
     ref <- ask
     (x, new) <- liftIO $ runState (zoom lens s) <$> readIORef ref
@@ -83,7 +88,10 @@ instance MonadDB Text (Id User) App where
     stateDB = appStateDB emails
 
 instance MonadDB (Id Problem) Problem App where
-    stateDB = appStateDB archive
+    stateDB = appStateDB problems
+
+instance MonadOrderedDB (UTCTime, Id Problem) App where
+    stateOrderedDB = appStateDB archive
 
 newCookie :: String -> String -> App ()
 newCookie name value = addCookie (MaxAge 30000000) $ mkCookie name value

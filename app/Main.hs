@@ -15,7 +15,8 @@ main = runApp $ msum
         [ path problem
         , dir "new" newProblem
         ]
-    , currentUser >>= maybe newProfile profile
+    , dir "archive" archive
+    , nullDir >> seeOther ("/archive" :: String) (toResponse ())
     ]
 
 signin :: App Response
@@ -167,4 +168,21 @@ newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags
 </form>
 |]) \[condition, solution, tags] -> do
     problemId <- insert Problem{problemTags = Tag <$> splitOn " " tags, ..}
+    time <- liftIO getCurrentTime
+    insertOrdered (time, problemId)
     return $ "/problem/"<>show problemId
+
+archive :: App Response
+archive = do
+    user <- currentUser
+    time <- addUTCTime (-nominalDay*30) <$> liftIO getCurrentTime
+    problems <- queryManyOrdered (\(posted, problemId) -> if posted < time
+        then return Nothing
+        else fmap (problemId,) <$> query @(Id Problem) problemId)
+    [page|
+<a href=(maybe "/signin" (\u -> "/profile/"<>pack (show u)) user)>Профиль</a>
+<h1>Архив задач за последний месяц</h1>
+<% traverse (\(i, p) -> problemXML p <%>
+    <a href=("/problem/"<>pack (show i)<>"/solution")>Решение</a>
+</%>) problems %>
+|]

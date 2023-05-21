@@ -5,8 +5,8 @@ module DB (Id, DB, MonadDB(..), initDB, insert, update, delete, query) where
 
 import qualified Data.Map as M
 import Control.Lens (use, uses, (%=), makeLenses)
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.State (MonadIO(..), runState, MonadState(state), State, StateT, execState)
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.State (runState, state, State, StateT, execState)
 import System.Directory (doesFileExist)
 import Data.Foldable (traverse_)
 import Happstack.Server (FromReqURI)
@@ -31,7 +31,7 @@ data DBAction k v
     deriving (Show, Read)
 
 initDB :: (Ord k, Read k, Read v) => String -> IO (DB k v)
-initDB n = liftIO do
+initDB n = do
     let p = "db/"<>n
         db = DB p mempty
     ex <- doesFileExist p
@@ -50,7 +50,7 @@ delete' :: Ord k => k -> State (DB k v) ()
 delete' k = values %= M.delete k
 
 add :: forall k v m. MonadDB k v m => DBAction k v -> m ()
-add x = stateDB (use @(DB k v) path) >>= liftIO . flip appendFile (show x<>"\n")
+add x = stateDB @k @v (use path) >>= liftIO . flip appendFile (show x<>"\n")
 
 insert :: forall a m. MonadDB (Id a) a m => a -> m (Id a)
 insert v = stateDB @_ @a (uses values $ maybe (Id 1) (succ . fst) . M.lookupMax) >>= \k ->
