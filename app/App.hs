@@ -11,6 +11,7 @@ module App (
     msum, optional, guard, when, lift, fromMaybe, isNothing,
     Text, Data.Text.length, readMaybe, pack, unpack, splitOn,
     liftIO, getCurrentTime, addUTCTime, nominalDay,
+    (%~), (&),
 
     users, emails,
     App, runApp,
@@ -24,7 +25,7 @@ import DB
 import OrderedDB
 import Types
 
-import Control.Lens (makeLenses, Lens', Zoom(..))
+import Control.Lens (makeLenses, Lens', Zoom(..), (%~), (&))
 import Control.Applicative (Alternative, optional)
 import Control.Monad (MonadPlus(..), msum, guard, mfilter, when)
 import Control.Monad.Trans (lift)
@@ -57,6 +58,7 @@ data DBs = DBs
     , _archive :: OrderedDB (UTCTime, Id Problem)
     , _pools :: DB (Id Pool) Pool
     , _accessiblePools :: DB (Id User) [Id Pool]
+    , _problemsSource :: DB (Id Problem) (Id Pool)
     }
 makeLenses ''DBs
 
@@ -75,6 +77,7 @@ runApp x = do
     createDirectoryIfMissing True "db"
     dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "problems"
         <*> initOrderedDB "archive" <*> initDB "pools" <*> initDB "accessiblePools"
+        <*> initDB "problemsSource"
     ref <- newIORef dbs
     simpleHTTP nullConf $ do
         decodeBody $ defaultBodyPolicy "/tmp/" 4096 4096 4096
@@ -104,6 +107,9 @@ instance MonadDB (Id Pool) Pool App where
 
 instance MonadDB (Id User) [Id Pool] App where
     stateDB = appStateDB accessiblePools
+
+instance MonadDB (Id Problem) (Id Pool) App where
+    stateDB = appStateDB problemsSource
 
 newCookie :: String -> String -> App ()
 newCookie name value = addCookie (MaxAge 30000000) $ mkCookie name value

@@ -14,7 +14,7 @@ main = runApp $ msum
         ]
     , dir "problem" $ msum
         [ path problem
-        , dir "new" newProblem
+        , dir "new" $ newProblem Nothing
         ]
     , dir "archive" archive
     , dir "pool" $ msum
@@ -45,7 +45,7 @@ signin = form ["email", "pass"] (\[email, pass] -> [page|
 
     newCookie "userId" $ show userId
     newCookie "pass" $ unpack pass
-    
+
     return $ "/profile/"<>show userId
 
 profile :: Id User -> App Response
@@ -89,14 +89,14 @@ newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pas
 |]) \[name, email, pass1, pass2] ->do
     query email >>= guard . isNothing @(Id User)
     guard $ pass1 == pass2 && App.length pass1 >= 8
-    
+
     passwordHash <- hashPass pass1
     userId <- insert User{..}
     update email userId
 
     newCookie "userId" $ show userId
     newCookie "pass" $ unpack pass1
-    
+
     return $ "/profile/"<>show userId
 
 editProfile :: App Response
@@ -121,7 +121,7 @@ editProfile = withUser \userId User{..} ->
         update newEmail userId
 
     update userId User{email = newEmail, name = newName, ..}
-    
+
     return $ "/profile/"<>show userId
 
 tagsXML :: Set Tag -> XMLGenT (HSPT XML App) XML
@@ -159,19 +159,23 @@ userXML n = [hsx|
 |]
 
 problem :: Id Problem -> App Response
-problem n = tryQuery n \p -> msum
-    [ nullDir >> [page| <% problemXMLWithSolutionRef n p %> |]
-    , dir "solution" [page|
-<% problemXML p
-    <%>
-        <h1>Решение</h1>
-        <p><% solution p %></p>
-    </%>
-%> |]
-    ]
+problem n = tryQuery n \p -> let
+    response = msum
+        [ nullDir >> [page| <% problemXMLWithSolutionRef n p %> |]
+        , dir "solution" [page|
+    <% problemXML p
+        <%>
+            <h1>Решение</h1>
+            <p><% solution p %></p>
+        </%>
+    %> |]
+        ] in
+    query @_ @(Id Pool) n >>= maybe response (`tryQuery` \Pool{..} -> withUser \userId _ -> do
+        guard $ userId `member` _poolEditAccess
+        response)
 
-newProblem :: App Response
-newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags] -> [page|
+newProblem :: Maybe (Id Pool, Pool) -> App Response
+newProblem source = form ["condition", "solution", "tags"] (\[condition, solution, tags] -> [page|
 <form method="POST">
     <label for="condition">Условие</label>
     <input type="text" name="condition" required="required" ("value" ?= condition)/>
@@ -189,8 +193,11 @@ newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags
 </form>
 |]) \[condition, solution, tags] -> do
     problemId <- insert Problem{problemTags = fromList $ Tag <$> splitOn " " tags, ..}
-    time <- liftIO getCurrentTime
-    insertOrdered (time, problemId)
+    maybe (do
+        time <- liftIO getCurrentTime
+        insertOrdered (time, problemId)) (\(poolId, p) -> do
+            update problemId poolId
+            p & poolProblems %~ S.insert problemId & update poolId) source
     return $ "/problem/"<>show problemId
 
 archive :: App Response
@@ -207,20 +214,21 @@ archive = do
 |]
 
 pool :: Id Pool -> App Response
-pool n = withUser \userId _ -> tryQuery n \Pool{..} -> if userId `member` poolEditAccess
+pool n = withUser \userId _ -> tryQuery n \Pool{..} -> if userId `member` _poolEditAccess
     then msum
         [ do
             nullDir
-            problems <- traverse (\p -> (p,) <$> query p) $ toList poolProblems
+            problems <- traverse (\p -> (p,) <$> query p) $ toList _poolProblems
             [page|
 <h1>Пул задач</h1>
 <h2>Владелец</h2>
-<% userXML poolOwner %>
+<% userXML _poolOwner %>
 <h2>Могут редактировать</h2>
-<% userXML <$> toList poolEditAccess %>
+<% userXML <$> toList _poolEditAccess %>
 <a href=("/pool/"<>pack (show n)<>"/addUser")>Добавить</a>
 <h1>Задачи</h1>
 <% uncurry (\p -> maybe (<%><p>Problem not found: <% pack $ show p %></p></%>) $ problemXMLWithSolutionRef p) <$> problems %>
+<a href=("/pool/"<>pack (show n)<>"/addProblem")>Добавить</a>
 |]
         , dir "addUser" $ form ["userId"] (\[newUserId] -> [page|
 <form method="post">
@@ -232,16 +240,17 @@ pool n = withUser \userId _ -> tryQuery n \Pool{..} -> if userId `member` poolEd
 </form>
 |]) \[newUser] -> do
             Just newUserId <- return . readMaybe $ unpack newUser
-            update n Pool{poolEditAccess = S.insert newUserId poolEditAccess, ..}
+            Pool{..} & poolEditAccess %~ S.insert newUserId & update n
             pools <- query newUserId
-            update poolOwner $ n : fromMaybe [] pools
+            update _poolOwner $ n : fromMaybe [] pools
             return $ "/pool/"<>show n
+        , dir "addProblem" $ newProblem $ Just (n, Pool{..})
         ]
     else unauthorized "You have no access to this pool"
 
 newPool :: App Response
-newPool = withUser \poolOwner _ -> do
-    poolId <- insert Pool{poolProblems = mempty, poolEditAccess = singleton poolOwner, ..}
-    pools <- query poolOwner
-    update poolOwner $ poolId : fromMaybe [] pools
+newPool = withUser \_poolOwner _ -> do
+    poolId <- insert Pool{_poolProblems = mempty, _poolEditAccess = singleton _poolOwner, ..}
+    pools <- query _poolOwner
+    update _poolOwner $ poolId : fromMaybe [] pools
     seeOther ("/pool/"<>show poolId) $ toResponse ()

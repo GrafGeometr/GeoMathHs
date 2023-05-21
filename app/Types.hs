@@ -6,6 +6,7 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Password.Bcrypt (Bcrypt, PasswordHash)
 import Happstack.Server (FromReqURI)
+import Control.Lens (makeLenses)
 
 newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI)
 
@@ -22,7 +23,8 @@ data Problem = Problem
     } deriving (Show, Read)
 
 data Pool = Pool
-    { poolProblems :: Set (Id Problem)
-    , poolOwner :: Id User
-    , poolEditAccess :: Set (Id User)
+    { _poolProblems :: Set (Id Problem)
+    , _poolOwner :: Id User
+    , _poolEditAccess :: Set (Id User)
     } deriving (Show, Read)
+makeLenses ''Pool
