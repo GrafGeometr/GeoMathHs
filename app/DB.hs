@@ -1,15 +1,20 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE GADTs #-}
 
 module DB (Id, DB, MonadDB(..), initDB, insert, update, delete, query) where
 
 import qualified Data.Map as M
 import Control.Lens (use, uses, (%=), makeLenses)
+import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.State (runState, state, State, StateT, execState)
 import System.Directory (doesFileExist)
 import Data.Foldable (traverse_)
 import Happstack.Server (FromReqURI)
+import HSP (XMLGenT)
+import HSP.Monad (HSPT)
 
 newtype Id a = Id Int deriving newtype (Eq, Ord, Enum, Show, Read, FromReqURI)
 
@@ -22,8 +27,15 @@ makeLenses ''DB
 class (MonadIO m, Ord k, Show k, Show v) => MonadDB k v m where
     stateDB :: State (DB k v) a -> m a
 
+    default stateDB :: (MonadTrans t, MonadDB k v n, m ~ t n) => State (DB k v) a -> m a
+    stateDB = lift . stateDB
+
 instance (MonadIO m, Ord k, Show k, Show v) => MonadDB k v (StateT (DB k v) m) where
     stateDB = state . runState
+
+instance MonadDB k v m => MonadDB k v (HSPT a m)
+
+instance MonadDB k v m => MonadDB k v (XMLGenT m)
 
 data DBAction k v
     = Update k v

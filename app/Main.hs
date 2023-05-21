@@ -2,6 +2,7 @@
 module Main where
 
 import App
+import qualified Data.Set as S (insert)
 
 main :: IO ()
 main = runApp $ msum
@@ -16,12 +17,16 @@ main = runApp $ msum
         , dir "new" newProblem
         ]
     , dir "archive" archive
+    , dir "pool" $ msum
+        [ path pool
+        , dir "new" newPool
+        ]
     , nullDir >> seeOther ("/archive" :: String) (toResponse ())
     ]
 
 signin :: App Response
 signin = form ["email", "pass"] (\[email, pass] -> [page|
-<form action="/signin" method="post">
+<form method="post">
     <label for="email">Email:</label>
     <input type="email" name="email" required="required" ("value" ?= email)/>
     <br/>
@@ -47,16 +52,22 @@ profile :: Id User -> App Response
 profile n = tryQuery n \User{..} -> currentUser >>= \u -> [page|
 <h1><% name %></h1>
 <p><% email %></p>
-<% if u == Just n then <% <%>
+<% if u == Just n then <% do
+pools <- query n
+<%>
+    <% (\(p :: Id Pool) -> <%><a href=("/pool/"<>pack (show p))><% show p %></a><br/></%>) <$> fromMaybe [] pools %>
+
     <a href="/profile/edit">Редактировать</a>
     <br/>
     <a href="/problem/new">Создать задачу</a>
+    <br/>
+    <a href="/pool/new">Новый пул</a>
 </%> %> else <% () %> %>
 |]
 
 newProfile :: App Response
 newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pass2] -> [page|
-<form action="/profile/new" method="post">
+<form method="post">
     <label for="name">Имя:</label>
     <input type="text" name="name" required="required" ("value" ?= name)/>
     <br/>
@@ -91,7 +102,7 @@ newProfile = form ["name", "email", "pass1", "pass2"] (\[name, email, pass1, pas
 editProfile :: App Response
 editProfile = withUser \userId User{..} ->
     form ["newName", "newEmail"] (\[newName, newEmail] -> [page|
-<form action="/profile/edit" method="post">
+<form method="post">
     <label for="name">Имя:</label>
     <input type="text" name="newName" required="required" value=(fromMaybe name newName)/>
     <br/>
@@ -113,11 +124,11 @@ editProfile = withUser \userId User{..} ->
     
     return $ "/profile/"<>show userId
 
-tagsXML :: [Tag] -> XMLGenT (HSPT XML App) XML
+tagsXML :: Set Tag -> XMLGenT (HSPT XML App) XML
 tagsXML xs = [hsx|
 <table>
     <tr>
-        <% map (\tag -> <th><% tagName tag %></th>) xs %>
+        <% map (\tag -> <th><% tagName tag %></th>) $ toList xs %>
     </tr>
 </table>
 |]
@@ -132,14 +143,24 @@ problemXML Problem{..} sol = [hsx|
 </%>
 |]
 
+problemXMLWithSolutionRef :: Id Problem -> Problem -> XMLGenT (HSPT XML App) [ChildType (HSPT XML App)]
+problemXMLWithSolutionRef n p = problemXML p [hsx|
+<%>
+    <a href=("/problem/"<>pack (show n)<>"/solution")>Решение</a>
+</%>
+|]
+
+userXML :: Id User -> XMLGenT (HSPT XML App) [ChildType (HSPT XML App)]
+userXML n = [hsx|
+<%>
+    <a href=("/profile/"<>pack (show n))><% maybe "Unknown" name <$> query n :: XMLGenT (HSPT XML App) Text %></a>
+    <br/>
+</%>
+|]
+
 problem :: Id Problem -> App Response
 problem n = tryQuery n \p -> msum
-    [ nullDir >> [page|
-<% problemXML p
-    <%>
-        <a href=("/problem/"<>pack (show n)<>"/solution")>Решение</a>
-    </%>
-%> |]
+    [ nullDir >> [page| <% problemXMLWithSolutionRef n p %> |]
     , dir "solution" [page|
 <% problemXML p
     <%>
@@ -151,7 +172,7 @@ problem n = tryQuery n \p -> msum
 
 newProblem :: App Response
 newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags] -> [page|
-<form action="/problem/new" method="POST">
+<form method="POST">
     <label for="condition">Условие</label>
     <input type="text" name="condition" required="required" ("value" ?= condition)/>
     <br/>
@@ -167,7 +188,7 @@ newProblem = form ["condition", "solution", "tags"] (\[condition, solution, tags
     <input type="submit" value="Создать"/>
 </form>
 |]) \[condition, solution, tags] -> do
-    problemId <- insert Problem{problemTags = Tag <$> splitOn " " tags, ..}
+    problemId <- insert Problem{problemTags = fromList $ Tag <$> splitOn " " tags, ..}
     time <- liftIO getCurrentTime
     insertOrdered (time, problemId)
     return $ "/problem/"<>show problemId
@@ -182,7 +203,45 @@ archive = do
     [page|
 <a href=(maybe "/signin" (\u -> "/profile/"<>pack (show u)) user)>Профиль</a>
 <h1>Архив задач за последний месяц</h1>
-<% traverse (\(i, p) -> problemXML p <%>
-    <a href=("/problem/"<>pack (show i)<>"/solution")>Решение</a>
-</%>) problems %>
+<% uncurry problemXMLWithSolutionRef <$> problems %>
 |]
+
+pool :: Id Pool -> App Response
+pool n = withUser \userId _ -> tryQuery n \Pool{..} -> if userId `member` poolEditAccess
+    then msum
+        [ do
+            nullDir
+            problems <- traverse (\p -> (p,) <$> query p) $ toList poolProblems
+            [page|
+<h1>Пул задач</h1>
+<h2>Владелец</h2>
+<% userXML poolOwner %>
+<h2>Могут редактировать</h2>
+<% userXML <$> toList poolEditAccess %>
+<a href=("/pool/"<>pack (show n)<>"/addUser")>Добавить</a>
+<h1>Задачи</h1>
+<% uncurry (\p -> maybe (<%><p>Problem not found: <% pack $ show p %></p></%>) $ problemXMLWithSolutionRef p) <$> problems %>
+|]
+        , dir "addUser" $ form ["userId"] (\[newUserId] -> [page|
+<form method="post">
+    <label for="userId">ID пользователя</label>
+    <input type="number" name="userId" required="required" ("value" ?= newUserId)/>
+    <br/>
+
+    <input type="submit" value="Добавить"/>
+</form>
+|]) \[newUser] -> do
+            Just newUserId <- return . readMaybe $ unpack newUser
+            update n Pool{poolEditAccess = S.insert newUserId poolEditAccess, ..}
+            pools <- query newUserId
+            update poolOwner $ n : fromMaybe [] pools
+            return $ "/pool/"<>show n
+        ]
+    else unauthorized "You have no access to this pool"
+
+newPool :: App Response
+newPool = withUser \poolOwner _ -> do
+    poolId <- insert Pool{poolProblems = mempty, poolEditAccess = singleton poolOwner, ..}
+    pools <- query poolOwner
+    update poolOwner $ poolId : fromMaybe [] pools
+    seeOther ("/pool/"<>show poolId) $ toResponse ()

@@ -7,8 +7,9 @@ module App (
     module DB,
     module OrderedDB,
     module HSP, HSPT,
-    msum, optional, guard, when, fromMaybe, isNothing,
-    Data.Text.length, pack, unpack, splitOn,
+    module Data.Set,
+    msum, optional, guard, when, lift, fromMaybe, isNothing,
+    Text, Data.Text.length, readMaybe, pack, unpack, splitOn,
     liftIO, getCurrentTime, addUTCTime, nominalDay,
 
     users, emails,
@@ -26,6 +27,7 @@ import Types
 import Control.Lens (makeLenses, Lens', Zoom(..))
 import Control.Applicative (Alternative, optional)
 import Control.Monad (MonadPlus(..), msum, guard, mfilter, when)
+import Control.Monad.Trans (lift)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (ReaderT (..), MonadReader, ask)
 import Control.Monad.State (State, runState)
@@ -42,6 +44,7 @@ import Language.Haskell.HSX.QQ (hsx)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import Text.Read (readMaybe)
 import System.Directory (createDirectoryIfMissing)
+import Data.Set (Set, toList, fromList, member, singleton)
 import Data.Time (UTCTime, getCurrentTime, addUTCTime, nominalDay)
 
 instance IsString Response where
@@ -52,6 +55,8 @@ data DBs = DBs
     , _emails :: DB Text (Id User)
     , _problems :: DB (Id Problem) Problem
     , _archive :: OrderedDB (UTCTime, Id Problem)
+    , _pools :: DB (Id Pool) Pool
+    , _accessiblePools :: DB (Id User) [Id Pool]
     }
 makeLenses ''DBs
 
@@ -68,7 +73,8 @@ instance MonadFail App where
 runApp :: App Response -> IO ()
 runApp x = do
     createDirectoryIfMissing True "db"
-    dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "problems" <*> initOrderedDB "archive"
+    dbs <- DBs <$> initDB "users" <*> initDB "emails" <*> initDB "problems"
+        <*> initOrderedDB "archive" <*> initDB "pools" <*> initDB "accessiblePools"
     ref <- newIORef dbs
     simpleHTTP nullConf $ do
         decodeBody $ defaultBodyPolicy "/tmp/" 4096 4096 4096
@@ -92,6 +98,12 @@ instance MonadDB (Id Problem) Problem App where
 
 instance MonadOrderedDB (UTCTime, Id Problem) App where
     stateOrderedDB = appStateDB archive
+
+instance MonadDB (Id Pool) Pool App where
+    stateDB = appStateDB pools
+
+instance MonadDB (Id User) [Id Pool] App where
+    stateDB = appStateDB accessiblePools
 
 newCookie :: String -> String -> App ()
 newCookie name value = addCookie (MaxAge 30000000) $ mkCookie name value
