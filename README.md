@@ -3,14 +3,21 @@
 ## Установка
 
 1. Установите haskell (проще всего через [ghcup](https://www.haskell.org/ghcup/))
-2. Для сборки проекта нужны версия `ghc 9.2.7`. Настроить это можно так:
+2. Для сборки проекта нужны версия `ghc 9.4.4`.
+   Проверить, какая версия установлена, можно так:
    ```
-   ghcup install ghc-9.2.7
-   ghcup set ghc 9.2.7
+   ghcup list
    ```
+   Поставить нужную можно так:
+   ```
+   ghcup install ghc-9.4.4
+   ghcup set ghc 9.4.4
+   ```
+   Если вы ранее работали с другой версией `ghc` и теперь оно ругается, можно сделать `cabal clean`
 3. Склонируйте репозиторий
 4. `cabal build`
-5. Для комфортной разработки рекомендую установить vs code с плагином Haskell. Для этого также потребуется haskell language server: `ghcup install hls`
+5. Возможно, `ghc` будет ругаться: `.../lib/include/HsNet.hs:32:11: fatal error: afunix_compat.h: No such file or directory`. Тогда надо этот [файл](https://github.com/haskell/network/blob/master/include/afunix_compat.h) положить в `.../lib/include/`. Повторить `cabal build`. Не знаю, почему это происходит
+6. Для комфортной разработки рекомендую установить vs code с плагином Haskell. Для этого также потребуется haskell language server: `ghcup install hls`
 
 ## Запуск
 
@@ -56,16 +63,8 @@
 
 Добавить в `DBs` новое поле `_<dbName> :: DB <DbKey> <DbValue>`.
 
-Добавить в `runApp` инициализацию БД `<*> initDB "<dbName>"`.
-
-Добавить
-```
-instance MonadDB <DbKey> <DbValue> App where
-    stateDB = appStateDB <dbName>
-```
-
 Далее с этой БД можно выполнять операции `query`, `update`, `delete`, иногда `insert`.
-Возможно придётся добавить аннотации `@<DbKey> @<DbValue>` сразу после имени функции.
+Возможно придётся добавить аннотации `@<DbValue> @<DbKey>` сразу после имени функции, но рекомендуется всегда добавлять `@<DbValue>`, тогда `@<DbKey>` никогда не потребуется.
 
 ### Хочу новую страницу
 
@@ -77,9 +76,7 @@ instance MonadDB <DbKey> <DbValue> App where
 
 Для аргументов запроса можно использовать [`lookText'`](https://hackage.haskell.org/package/happstack-server-7.8.0.2/docs/Happstack-Server-RqData.html#v:lookText-39-).
 
-Для фрагмента html можно использовать `page`.
-
-Для формы ввода данных можно использовать `form`.
+Для фрагмента html можно использовать `template`, для более тонких манипуляций `html`, для самых тонких `hsx`.
 
 Для доступа к текущему пользователю `currentUser`.
 

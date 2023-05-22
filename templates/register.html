@@ -1,0 +1,104 @@
+<style>
+    .main_div {
+        margin-top: 100px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .register_form {
+        width: 23%;
+        border: 2px solid rgb(70, 178, 250);
+        border-radius: 10px;
+        
+        background-color: rgb(255,255,255);
+
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        align-items: center;
+        padding: 15px;
+    }
+    .greeting {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+    }
+    .input_form {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .input_field_name {
+        margin-bottom: 10px;
+        font-size: 20px;
+    }
+    .input_field {
+        height: 100%;
+        width: 80%;
+        font-size: 25px;
+        background-color:#f4f4f4;
+        border: 2px solid #dddddd;
+        border-radius: 5px;
+        padding: 5px;
+    }
+    .register_button {
+        width: 55%;
+        height: 50px;
+        margin-top: 20px;
+        border: 0;
+        border-radius: 10px;
+        font-size: 17px;
+        font-weight: bold;
+        color: rgb(255,255,255);
+        background-image: radial-gradient(rgb(137, 196, 238), rgb(70, 178, 250));
+        cursor: pointer;
+    }
+</style>
+<script>
+    function register() {
+        var login = document.getElementById("login").value;
+        var email = document.getElementById("email").value;
+        var password = document.getElementById("password").value;
+        var repeat_password = document.getElementById("repeat_password").value;
+        var data = {'login' : login, 'email' : email, 'password' : password, 'repeat_password' : repeat_password};
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/test_registration', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    document.location.href = this.responseText;
+                }
+            };
+        xhr.send(JSON.stringify(data));
+    }
+
+</script>
+<div class="main_div">
+    <form class="register_form" action="javascript:register();">
+        <div class="greeting">
+            <div style="font-size: 25px; font-weight: bold; margin-bottom: 10px;">Первый раз на GeoMath?</div>
+            <div style="font-size: 15px">Регистрация на сайте</div>
+        </div>
+        <div class="input_form">
+            <div class="input_field_name">Логин</div>
+            <input type="text" id="login" class="input_field" required="required"/>
+        </div>
+        <div class="input_form">
+            <div class="input_field_name">Email</div>
+            <input type="email" id="email" class="input_field" required="required"/>
+        </div>
+        <div class="input_form">
+            <div class="input_field_name">Пароль</div>
+            <input type="password" id="password" class="input_field" required="required"/>
+        </div>
+        <div class="input_form">
+            <div class="input_field_name">Повторите пароль</div>
+            <input type="password" id="repeat_password" class="input_field" required="required"/>
+        </div>
+        <input class="register_button" type="submit" value="Зарегистрироваться"/>
+    </form>
+</div>

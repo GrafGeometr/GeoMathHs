@@ -1,82 +1,92 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
-module DB (Id, DB, MonadDB(..), initDB, insert, update, delete, query) where
+module DB (Id, DB, MonadDB, insert, update, delete, query, makeDBs) where
 
-import qualified Data.Map as M
-import Control.Lens (use, uses, (%=), makeLenses)
-import Control.Monad.Trans (MonadTrans(..))
+import Control.Lens (Lens', (&), (^.), (.~), makeLenses)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.State (runState, state, State, StateT, execState)
-import System.Directory (doesFileExist)
-import Data.Foldable (traverse_)
+import Control.Monad.Reader (MonadReader, ask)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import qualified Data.Map as M (Map, insert, delete, (!?), lookupMax)
 import Happstack.Server (FromReqURI)
-import HSP (XMLGenT)
-import HSP.Monad (HSPT)
+import Language.Haskell.TH (mkName, Exp(VarE, ConE), DecsQ, Con(RecC), Type(ConT, AppT), Dec(DataD), Name, Info(TyConI), nameBase, reify)
+import System.Directory (doesFileExist)
 
 newtype Id a = Id Int deriving newtype (Eq, Ord, Enum, Show, Read, FromReqURI)
 
-data DB k v = DB
-    { _path :: FilePath
-    , _values :: M.Map k v
-    }
-makeLenses ''DB
+newtype DB k v = DB (M.Map k v)
 
-class (MonadIO m, Ord k, Show k, Show v) => MonadDB k v m where
-    stateDB :: State (DB k v) a -> m a
+class HasDB a b | -> a where
+    path :: FilePath
+    db :: Lens' a b
 
-    default stateDB :: (MonadTrans t, MonadDB k v n, m ~ t n) => State (DB k v) a -> m a
-    stateDB = lift . stateDB
-
-instance (MonadIO m, Ord k, Show k, Show v) => MonadDB k v (StateT (DB k v) m) where
-    stateDB = state . runState
-
-instance MonadDB k v m => MonadDB k v (HSPT a m)
-
-instance MonadDB k v m => MonadDB k v (XMLGenT m)
+type MonadDB k v a m = (MonadIO m, MonadReader (IORef a) m, HasDB a (DB k v), Show k, Show v, Ord k)
 
 data DBAction k v
     = Update k v
     | Delete k
     deriving (Show, Read)
 
-initDB :: (Ord k, Read k, Read v) => String -> IO (DB k v)
-initDB n = do
-    let p = "db/"<>n
-        db = DB p mempty
+initDB :: forall v k a. (HasDB a (DB k v), Ord k, Read k, Read v) => IO (DB k v)
+initDB = do
+    let p = "db/"<>path @a @(DB k v)
     ex <- doesFileExist p
-    if ex
+    DB <$> if ex
         then do
             ls <- fmap read . lines <$> readFile p
-            return $ traverse_ (\case
-                Update i val -> update' i val
-                Delete i -> delete' i) ls `execState` db
-        else return db
+            return $ foldl (flip \case
+                Update k v -> M.insert k v
+                Delete k -> M.delete k) mempty ls
+        else return mempty
 
-update' :: Ord k => k -> v -> State (DB k v) ()
-update' k v = values %= M.insert k v
+add :: forall a v k. (Show k, Show v, HasDB a (DB k v)) => DBAction k v -> IO ()
+add x = appendFile (path @a @(DB k v)) $ show x<>"\n"
 
-delete' :: Ord k => k -> State (DB k v) ()
-delete' k = values %= M.delete k
-
-add :: forall k v m. MonadDB k v m => DBAction k v -> m ()
-add x = stateDB @k @v (use path) >>= liftIO . flip appendFile (show x<>"\n")
-
-insert :: forall a m. MonadDB (Id a) a m => a -> m (Id a)
-insert v = stateDB @_ @a (uses values $ maybe (Id 1) (succ . fst) . M.lookupMax) >>= \k ->
-    k <$ update k v
-
-update :: MonadDB k v m => k -> v -> m ()
-update k v = do
+insert :: MonadDB (Id v) v a m => v -> m (Id v)
+insert v = ask >>= \ref -> liftIO do
+    dbs <- readIORef ref
+    let DB values = dbs^.db
+        k = maybe (Id 1) (succ . fst) $ M.lookupMax values
     add $ Update k v
-    stateDB $ update' k v
+    writeIORef ref $ dbs & db .~ DB (M.insert k v values)
+    return k
 
-delete :: forall k v m. MonadDB k v m => k -> m ()
-delete k = do
-    add @k @v $ Delete k
-    stateDB @k @v $ delete' k
+update :: MonadDB k v a m => k -> v -> m ()
+update k v = ask >>= \ref -> liftIO do
+    dbs <- readIORef ref
+    let DB values = dbs^.db
+    add $ Update k v
+    writeIORef ref $ dbs & db .~ DB (M.insert k v values)
 
-query :: MonadDB k v m => k -> m (Maybe v)
-query = stateDB . uses values . M.lookup
+delete :: forall v k a m. MonadDB k v a m => k -> m ()
+delete k = ask >>= \ref -> liftIO do
+    dbs <- readIORef ref
+    let DB values = dbs^.db @_ @(DB k v)
+    add @_ @v $ Delete k
+    writeIORef ref $ dbs & db .~ DB (M.delete k values)
+
+query :: forall v k a m. MonadDB k v a m => k -> m (Maybe v)
+query k = ask >>= \ref -> liftIO do
+    dbs <- readIORef ref
+    let DB values = dbs^.db
+    return $ values M.!? k
+
+makeDBs :: Name -> DecsQ
+makeDBs n = do
+    ls <- makeLenses n
+    TyConI (DataD [] _ [] Nothing [RecC c fs] _) <- reify n
+    is <- concat <$> traverse (\(_f, _, t) -> do
+        '_':f <- return $ nameBase _f
+        AppT (AppT (ConT dbName) k) v <- return t
+        when (dbName /= ''DB) $ fail "Field is not DB"
+        [d|
+            instance HasDB $(pure $ ConT n) (DB $(pure k) $(pure v)) where
+                path = f
+                db = $(pure . VarE $ mkName f)
+            |]) fs
+    (<> is <> ls) <$> [d|
+        initDBs :: IO (IORef $(pure $ ConT n))
+        initDBs = $(foldr (\_ f -> [| $f <*> initDB |]) [| pure $(pure $ ConE c) |] fs) >>= newIORef
+        |]

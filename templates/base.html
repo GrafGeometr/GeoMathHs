@@ -1,0 +1,131 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+body {
+    background-color:#f4f4f4;
+    margin-left: 100px;
+    margin-right: 100px;
+    margin-top: 0px;
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+}
+
+
+.topnav a {
+  float: left;
+  color: #f2f2f2;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 17px;
+}
+
+.topnav a:hover {
+  background-color: #e8eeff;
+  color: black;
+}
+
+.topnav a.active {
+  background-color: #368dff;
+  color: white;
+}
+
+.logo_img {
+    mix-blend-mode: multiply;
+    height: 50px;
+}
+
+.logo {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: stretch;
+}
+
+.logo_title {
+    text-align: center;
+    font-size: 30px;
+    padding-top: 16px;
+    padding-bottom: 14px;
+    padding-left: 5px;
+}
+
+.topnav {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: stretch;
+    background-color: rgb(70, 178, 250);
+    border-radius: 5px;
+}
+
+.profile {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-end;
+    font-size: 17px;
+    padding-bottom: 10px;
+}
+
+.profile a {
+  color: #000000;
+  text-align: center;
+  text-decoration: none;
+  font-size: 17px;
+}
+
+.profile a:hover {
+    color: rgb(70, 178, 250);
+    text-decoration: underline;
+}
+
+.profile_link {
+    margin-right: 10px;
+}
+
+.logout {
+    margin-left: 10px;
+}
+
+.login_link {
+    margin-right: 10px;
+}
+
+.register_link {
+    margin-left: 10px;
+}
+
+</style>
+</head>
+<body>
+  
+    <div class="header">
+        <div class="logo">
+            <img class = "logo_img" src="/static/images/logo.png" alt="logo"/>
+            <div class = "logo_title">GeoMath</div>
+        </div>
+        <div class="profile">
+        </div>
+    </div>
+
+    <div class="topnav">
+        <a id="feed_nav" href="/feed">Лента</a>
+        <a id="contests_nav" href="/contests">Соревнования</a>
+        <a id="collections_nav" href="/collections">Подборки</a>
+        <a id="editor_nav" href="/editor">Редактор</a>
+    </div>
+
+    <% content %>
+
+</body>
+</html>

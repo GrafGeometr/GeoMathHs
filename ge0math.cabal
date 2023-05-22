@@ -4,22 +4,20 @@ version:            0.1.0.0
 build-type:         Simple
 
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall -Wno-simplifiable-class-constraints
 
 executable ge0math
     import:           warnings
     main-is:          Main.hs
     other-modules:    Types
                     , DB
-                    , OrderedDB
                     , App
     default-extensions: TemplateHaskell
                     , QuasiQuotes
-                    , OverloadedStrings
                     , BlockArguments
                     , RecordWildCards
                     , DerivingStrategies
-    build-depends:    base ^>=4.16.0.0
+    build-depends:    base ^>=4.17.0.0
                     , template-haskell
                     , happstack-server
                     , happstack-hsp
