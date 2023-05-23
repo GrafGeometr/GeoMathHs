@@ -12,11 +12,13 @@ executable ge0math
     other-modules:    Types
                     , DB
                     , App
+                    , Lenses
     default-extensions: TemplateHaskell
                     , QuasiQuotes
                     , BlockArguments
                     , RecordWildCards
                     , DerivingStrategies
+                    , AllowAmbiguousTypes
     build-depends:    base ^>=4.17.0.0
                     , template-haskell
                     , happstack-server

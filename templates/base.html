@@ -118,7 +118,7 @@ body {
             {% case current_user of
             Just user -> {/
                 <div class="profile_link">
-                    <a href="/profile/{{ name user }}">{% name user %}</a>
+                    <a href="/profile/{{ userName user }}">{% userName user %}</a>
                 </div>
                 <div class="logout">
                     <a href="/logout">Выйти</a>

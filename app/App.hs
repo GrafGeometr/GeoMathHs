@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module App (
     module DB,
@@ -8,7 +9,7 @@ module App (
 
     App, runApp,
     newCookie, hashPass, currentUser, withUser,
-    tryQuery,
+    tryQuery, checkUnique,
     liftHTML, unHTML, html, template,
     ToText(..),
 ) where
@@ -36,14 +37,14 @@ import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import System.Directory (createDirectoryIfMissing)
 import Text.Read (readMaybe)
 
+data ArchiveByTime
+
 data DBs = DBs
-    { _users :: DB (Id User) User
-    , _emails :: DB Text (Id User)
-    , _problems :: DB (Id Problem) Problem
-    , _archive :: OrderedDB (UTCTime, Id Problem)
-    , _pools :: DB (Id Pool) Pool
-    , _accessiblePools :: DB (Id User) [Id Pool]
-    , _problemsSource :: DB (Id Problem) (Id Pool)
+    { users :: DB (Id User) User
+    , emails :: DB Text (Id User)
+    , problems :: DB (Id Problem) Problem
+    , archive :: OrderedDB ArchiveByTime (UTCTime, Id Problem)
+    , pools :: DB (Id Pool) Pool
     }
 makeDBs ''DBs
 
@@ -85,13 +86,16 @@ withUser f = msum
         Just i <- currentUser
         pass <- lookCookieValue "pass"
         Just User{..} <- query i
-        guard $ checkPass (pack pass) passwordHash
+        guard $ checkPass (pack pass) userPasswordHash
         f i User{..}
     , seeOther ("/signin" :: String) $ toResponse @Text "Please sign in"
     ]
 
 tryQuery :: MonadDB k v DBs App => k -> (v -> App Response) -> App Response
 tryQuery k f = query k >>= maybe (notFound $ toResponse @Text "Given ID was not found") f
+
+checkUnique :: forall v k. MonadDB k v DBs App => k -> App Response -> App Response
+checkUnique k x = query k >>= maybe x undefined
 
 instance Monad m => EmbedAsAttr (HSPT XML m) (Attr L.Text String) where
     asAttr (n := x) = asAttr $ n := pack x

@@ -1,30 +1,36 @@
 module Types where
 
 import DB
+import Lenses
 
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import Data.Password.Bcrypt (Bcrypt, PasswordHash)
 import Happstack.Server (FromReqURI)
-import Control.Lens (makeLenses)
 
 newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI)
 
 data User = User
-    { name :: Text
-    , email :: Text
-    , passwordHash :: PasswordHash Bcrypt
+    { userName :: Text
+    , userPasswordHash :: PasswordHash Bcrypt
+    , userDateCreated :: UTCTime
+    , userEmails :: Set Text
+    , userPools :: Set (Id Pool)
     } deriving (Show, Read)
 
 data Problem = Problem
-    { condition :: Text
-    , solution :: Text
+    { problemPool :: Maybe (Id Pool)
+    , problemCondition :: Text
+    , problemSolution :: Text
     , problemTags :: Set Tag
     } deriving (Show, Read)
 
 data Pool = Pool
-    { _poolProblems :: Set (Id Problem)
-    , _poolOwner :: Id User
-    , _poolEditAccess :: Set (Id User)
+    { poolName :: Text
+    , poolProblems :: Set (Id Problem)
+    , poolOwner :: Id User
+    , poolEditAccess :: Set (Id User)
     } deriving (Show, Read)
-makeLenses ''Pool
+
+makeAllLenses [''User, ''Problem, ''Pool]
