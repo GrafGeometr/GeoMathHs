@@ -66,7 +66,7 @@
         var repeat_password = document.getElementById("repeat_password").value;
         var data = {'login' : login, 'email' : email, 'password' : password, 'repeat_password' : repeat_password};
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/test_registration', true);
+        xhr.open('POST', '/register', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {

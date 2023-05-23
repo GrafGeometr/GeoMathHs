@@ -25,6 +25,8 @@ executable ge0math
                     , happstack-hsp
                     , hsp
                     , hsx2hs
+                    , aeson
+                    , bytestring
                     , text
                     , password
                     , mtl
@@ -32,5 +34,6 @@ executable ge0math
                     , lens
                     , directory
                     , time
+                    , with-utf8
     hs-source-dirs:   app
     default-language: GHC2021
