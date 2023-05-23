@@ -115,6 +115,23 @@ body {
             <div class = "logo_title">GeoMath</div>
         </div>
         <div class="profile">
+            {% case current_user of
+            Just user -> {/
+                <div class="profile_link">
+                    <a href="/profile/{{ name user }}">{% name user %}</a>
+                </div>
+                <div class="logout">
+                    <a href="/logout">Выйти</a>
+                </div>
+            /}
+            Nothing -> {/
+                <div class="login_link">
+                    <a href="/login/$">Войти</a>
+                </div>
+                <div class="register_link">
+                    <a href="/register">Зарегистрироваться</a>
+                </div>
+            /} %}
         </div>
     </div>
 
@@ -125,7 +142,7 @@ body {
         <a id="editor_nav" href="/editor">Редактор</a>
     </div>
 
-    <% content %>
+    {% content %}
 
 </body>
 </html>

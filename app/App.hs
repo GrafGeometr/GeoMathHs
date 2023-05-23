@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module App (
     module DB,
@@ -8,7 +9,8 @@ module App (
     App, runApp,
     newCookie, hashPass, currentUser, withUser,
     tryQuery,
-    html, template,
+    liftHTML, unHTML, html, template,
+    ToText(..),
 ) where
 
 import DB
@@ -20,7 +22,9 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (ReaderT (..), MonadReader)
 import Data.IORef (IORef)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack, replace)
+import qualified Data.Text.IO as T (readFile)
+import qualified Data.Text.Lazy as L (Text)
 import Data.Time (UTCTime)
 import Happstack.Server (FilterMonad, ServerMonad, ServerPartT, WebMonad, Response, Happstack, HasRqData, simpleHTTP, nullConf, decodeBody, defaultBodyPolicy, addCookie, CookieLife (..), mkCookie, lookCookieValue, seeOther, toResponse, notFound)
 import HSP
@@ -83,18 +87,50 @@ withUser f = msum
         Just User{..} <- query i
         guard $ checkPass (pack pass) passwordHash
         f i User{..}
-    , seeOther ("/signin" :: String) $ toResponse "Please sign in"
+    , seeOther ("/signin" :: String) $ toResponse @Text "Please sign in"
     ]
 
 tryQuery :: MonadDB k v DBs App => k -> (v -> App Response) -> App Response
-tryQuery k f = query k >>= maybe (notFound $ toResponse "Given ID was not found") f
+tryQuery k f = query k >>= maybe (notFound $ toResponse @Text "Given ID was not found") f
 
-html :: FilePath -> Bool -> ExpQ
+instance Monad m => EmbedAsAttr (HSPT XML m) (Attr L.Text String) where
+    asAttr (n := x) = asAttr $ n := pack x
+
+liftHTML :: App a -> XMLGenT (HSPT XML App) a
+liftHTML = XMLGenT . HSPT
+
+unHTML :: XMLGenT (HSPT XML App) a -> App a
+unHTML = unHSPT . unXMLGenT
+
+html :: String -> Bool -> ExpQ
 html rel b = do
     p <- makeRelativeToProject $ "templates/"<>rel<>".html"
     addDependentFile p
-    src <- liftIO $ readFile p
-    SigE <$> quoteExp hsx (if b then "<%>"<>src<>"</%>" else src) <*> [t| XMLGenT (HSPT XML App) _ |]
+    src <- liftIO $ T.readFile p
+    let src' = foldr (uncurry replace) src
+            [ ("{%", "<%")
+            , ("%}", "%>")
+            , ("{/", "<%>")
+            , ("/}", "</%>")
+            , ("{{", "\"<>toText(")
+            , ("}}", ")<>\"")
+            , ("=\"", "=(\"")
+            , ("= \"", "= (\"")
+            , ("\" ", "\") ")
+            , ("\">", "\")>")
+            , ("\"/>", "\")/>")
+            , ("required", "required=True")
+            ]
+    SigE <$> quoteExp hsx (unpack if b then "<%>"<>src'<>"</%>" else src') <*> [t| XMLGenT (HSPT XML App) _ |]
 
-template :: FilePath -> ExpQ
-template p = [| unHSPT @XML @App $ unXMLGenT $ base $(html p True) |]
+template :: String -> ExpQ
+template p = [| unHTML $ base $(html p True) |]
+
+class ToText a where
+    toText :: a -> String
+
+instance ToText Text where
+    toText = unpack
+
+instance ToText (Id a) where
+    toText = show
