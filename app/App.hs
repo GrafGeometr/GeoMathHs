@@ -21,6 +21,7 @@ import Control.Monad.Reader (ReaderT (..), MonadReader)
 import Data.IORef (IORef)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
 import Data.Text (Text, pack)
+import Data.Time (UTCTime)
 import Happstack.Server (FilterMonad, ServerMonad, ServerPartT, WebMonad, Response, Happstack, HasRqData, simpleHTTP, nullConf, decodeBody, defaultBodyPolicy, addCookie, CookieLife (..), mkCookie, lookCookieValue, seeOther, toResponse, notFound)
 import HSP
 import HSP.Monad (HSPT(..))
@@ -35,7 +36,7 @@ data DBs = DBs
     { _users :: DB (Id User) User
     , _emails :: DB Text (Id User)
     , _problems :: DB (Id Problem) Problem
-    -- , _archive :: OrderedDB (UTCTime, Id Problem)
+    , _archive :: OrderedDB (UTCTime, Id Problem)
     , _pools :: DB (Id Pool) Pool
     , _accessiblePools :: DB (Id User) [Id Pool]
     , _problemsSource :: DB (Id Problem) (Id Pool)
