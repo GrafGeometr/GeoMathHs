@@ -3,6 +3,7 @@ module Types where
 import DB
 import Lenses
 
+import Data.Map (Map)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -19,6 +20,13 @@ data User = User
     , userPools :: Set (Id Pool)
     } deriving (Show, Read)
 
+newtype VerificationToken = VerificationToken Text deriving (Show, Read)
+
+data EmailInfo = EmailInfo
+    { emailDateCreated :: UTCTime
+    , emailVerificationToken :: Maybe VerificationToken -- Nothing if verified
+    } deriving (Show, Read)
+
 data Problem = Problem
     { problemPool :: Maybe (Id Pool)
     , problemCondition :: Text
@@ -26,11 +34,16 @@ data Problem = Problem
     , problemTags :: Set Tag
     } deriving (Show, Read)
 
+data Role
+    = Owner
+    | Participiant
+    | Invited
+    deriving (Show, Read)
+
 data Pool = Pool
     { poolName :: Text
     , poolProblems :: Set (Id Problem)
-    , poolOwner :: Id User
-    , poolEditAccess :: Set (Id User)
+    , poolMembers :: Map (Id User) Role
     } deriving (Show, Read)
 
-makeAllLenses [''User, ''Problem, ''Pool]
+makeAllLenses [''User, ''EmailInfo, ''Problem, ''Pool]

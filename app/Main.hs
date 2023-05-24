@@ -7,7 +7,10 @@ import App
 import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
-main = runApp $ dir "register" register
+main = runApp $ msum
+    [ dir "register" register
+    , dir "static" $ serveDirectory DisableBrowsing [] "static"
+    ]
 
 base :: EmbedAsChild (HSPT XML App) p => p -> HTML XML
 base content = do
