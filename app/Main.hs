@@ -5,12 +5,17 @@ module Main where
 
 import App
 import Data.Set (singleton)
+import App (currentUser)
 
 main :: IO ()
 main = runApp $ msum
     [ dir "login" login
     , dir "register" register
     , dir "static" $ serveDirectory DisableBrowsing [] "static"
+    , dir "" index
+    , dir "contests" contests
+    , dir "collections" collections
+    , dir "editor" editor
     ]
 
 base :: EmbedAsChild (HSPT XML App) p => p -> HTML XML
@@ -47,3 +52,24 @@ register = form (do
     loginUser i password
     
     return $ Just "/feed") $(template "register")
+
+index :: App Response
+index = do
+    $(template "base")
+
+feed :: App Response
+feed = do
+    $(template "feed")
+
+contests :: App Response
+contests = do
+    $(template "contests")
+
+collections :: App Response
+collections = do
+    $(template "collections")
+
+editor :: App Response
+editor = do
+    $(template "editor")
+
