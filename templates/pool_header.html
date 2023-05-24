@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .pool_topnav_item {
+        display: flex;
+        text-decoration: none;
+        align-items: center;
+        color: black;
+        background-color: initial;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 20px;
+        text-align: center;
+        line-height: 30px;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 20px;
+    }
+    .pool_topnav_item:hover {
+        background-color: #dadada;
+    }
+</style>
+<div>
+    <p style="color: black; font-size: 17px;">
+        <a href="/profile/{{ current_user.name }}/pools" style="color: black; margin: 10px; text-decoration: none;">Мои пулы</a>
+        /
+        <a href="/pool/{{ current_pool.hashed_id }}/problems" style="color: black; margin: 10px; text-decoration: none; font-weight: bold;">{{ current_pool.name }}</a>
+    </p>
+</div>
+
+<div style="display: flex; flex-direction: row; margin-top: 20px;">
+    <a id="problems_href" href="/pool/{{ current_pool.hashed_id }}/problems" class="pool_topnav_item">
+        <img src="/static/images/math.png" style="margin-right: 10px; width: 20px;">
+        <span>Задачи</span>
+    </a>
+    <a id="participants_href" href="/pool/{{ current_pool.hashed_id }}/participants" class="pool_topnav_item">
+        <img src="/static/images/users.png" style="margin-right: 10px; width: 20px;">
+        <span>Состав</span>
+    </a>
+    <a id="management_href" href="/pool/{{ current_pool.hashed_id }}/management" class="pool_topnav_item">
+        <img src="/static/images/management.png" style="margin-right: 10px; width: 20px;">
+        <span>Управление</span>
+    </a>
+</div>
+<div style="width: 100%; height: 1px; background-color: rgb(197, 197, 197); margin-top: 15px; margin-bottom: 15px;"></div>
+{% block pool_body %}{% endblock %}
+
+{% endblock %}

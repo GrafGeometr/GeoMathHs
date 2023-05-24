@@ -1,41 +1,47 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module App (
     module DB,
     module Types,
     module HSP, HSPT,
     module Happstack.Server,
-    msum,
+    msum, optional, guard, liftIO,
+    fromMaybe,
+    getCurrentTime,
 
     App, runApp,
-    newCookie, hashPass, currentUser, withUser,
+    redirect, hashPass, checkPass, loginUser, currentUser, withUser, createToken,
     tryQuery, checkUnique,
-    HTML, liftHTML, unHTML, runHTML, html, template,
+    HTML, liftHTML, unHTML, runHTML, html, template, form,
     ToText(..),
-    json,
+    json, arg, argStr, argText
 ) where
 
 import DB
+import Lenses
 import Types
 
-import Control.Applicative (Alternative)
+import Control.Applicative (Alternative, optional)
+import Control.Concurrent (putMVar)
 import Control.Monad (MonadPlus(..), msum, guard)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans (lift)
 import Control.Monad.Reader (ReaderT (..), MonadReader (..))
 import Data.Aeson (decode, Value, FromJSON, fromJSON, Result (..))
 import Data.IORef (IORef)
+import Data.List (mapAccumL)
 import Data.Map (Map, (!?))
 import Data.Maybe (fromMaybe)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
 import Data.Text (Text, pack, unpack, replace)
 import qualified Data.Text.IO.Utf8 as T (readFile)
 import qualified Data.Text.Lazy as L (Text)
-import Data.Time (UTCTime)
-import Happstack.Server
+import Data.Time (UTCTime, getCurrentTime)
+import Happstack.Server hiding (redirect)
 import Happstack.Server.HSP.HTML ()
+import Happstack.Server.SURI (ToSURI)
 import HSP
 import HSP.Monad (HSPT(..))
 import Language.Haskell.HSX.QQ (hsx)
@@ -43,13 +49,15 @@ import Language.Haskell.TH (ExpQ, Exp (SigE))
 import Language.Haskell.TH.Syntax (addDependentFile, makeRelativeToProject)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import System.Directory (createDirectoryIfMissing)
+import System.Random (getStdRandom, randomR)
 import Text.Read (readMaybe)
 
 data ArchiveByTime
 
 data DBs = DBs
     { users :: DB (Id User) User
-    , emails :: DB Text (Id User)
+    , names :: DB UserName (Id User)
+    , emails :: DB Email EmailInfo
     , problems :: DB (Id Problem) Problem
     , archive :: OrderedDB ArchiveByTime (UTCTime, Id Problem)
     , pools :: DB (Id Pool) Pool
@@ -66,8 +74,19 @@ newtype App a = App { unApp :: ReaderT (IORef DBs) (ReaderT (Map String Value) (
 instance MonadFail App where
     fail _ = mzero
 
+instance EmbedAsAttr (HSPT XML App) (Attr a v) => EmbedAsAttr (HSPT XML App) (Attr a (App v)) where
+    asAttr (a := v) = liftHTML v >>= asAttr . (a:=)
+
+instance EmbedAsAttr (HSPT XML App) (Attr a v) => EmbedAsAttr (HSPT XML App) (Attr a (Maybe v)) where
+    asAttr (a := Just v) = asAttr $ a := v
+    asAttr (_ := Nothing) = return []
+
 decodeJsonBody :: ServerPartT IO (Map String Value)
-decodeJsonBody = askRq >>= fmap (\b -> fromMaybe mempty $ b >>= decode . unBody) . takeRequestBody
+decodeJsonBody = askRq >>= \rq -> takeRequestBody rq >>=
+    maybe (return mempty) \b -> maybe (do
+        liftIO $ putMVar (rqBody rq) b
+        decodeBody (defaultBodyPolicy "/tmp/" 4096 4096 4096)
+        return mempty) return . decode $ unBody b
 
 runApp :: App Response -> IO ()
 runApp x = do
@@ -77,8 +96,8 @@ runApp x = do
         dec <- decodeJsonBody
         unApp x `runReaderT` ref `runReaderT` dec
 
-newCookie :: String -> String -> App ()
-newCookie name value = addCookie (MaxAge 30000000) $ mkCookie name value
+newCookie :: Show a => String -> a -> App ()
+newCookie name = addCookie (MaxAge 30000000) . mkCookie name . show
 
 hashPass :: Text -> App (PasswordHash Bcrypt)
 hashPass = hashPassword . mkPassword
@@ -88,6 +107,14 @@ checkPass pass hash = case checkPassword (mkPassword pass) hash of
     PasswordCheckSuccess -> True
     PasswordCheckFail -> False
 
+redirect :: ToSURI uri => uri -> App Response
+redirect x = seeOther x $ toResponse ()
+
+loginUser :: Id User -> Text -> App ()
+loginUser i pass = do
+    newCookie "userId" i
+    newCookie "pass" pass
+
 currentUser :: App (Maybe (Id User))
 currentUser = readMaybe <$> lookCookieValue "userId"
 
@@ -95,15 +122,26 @@ withUser :: (Id User -> User -> App Response) -> App Response
 withUser f = msum
     [ do
         Just i <- currentUser
-        pass <- lookCookieValue "pass"
+        pass <- readCookieValue "pass"
         Just User{..} <- query i
-        guard $ checkPass (pack pass) userPasswordHash
+        guard $ checkPass pass userPasswordHash
         f i User{..}
-    , seeOther ("/signin" :: String) $ toResponse @Text "Please sign in"
+    , redirect "/login"
     ]
 
+generateToken :: App VerificationToken
+generateToken = getStdRandom $ \g ->
+    let (g', s) = mapAccumL genChar g [1..30::Int] in (VerificationToken $ pack s, g') where
+    xs = ['A'..'Z']<>['a'..'z']<>['0'..'9']
+    genChar g _ = let (n, g') = randomR (0, length xs-1) g in (g', xs!!n)
+
+createToken :: Email -> EmailInfo -> App ()
+createToken email info = do
+    token <- generateToken
+    update email $ info & _emailVerificationToken ?~ token
+
 tryQuery :: MonadDB k v DBs App => k -> (v -> App Response) -> App Response
-tryQuery k f = query k >>= maybe (notFound $ toResponse @Text "Given ID was not found") f
+tryQuery k f = query k >>= maybe (notFound $ toResponse "Given ID was not found") f
 
 checkUnique :: forall v k. MonadDB k v DBs App => k -> App Response -> App Response
 checkUnique k x = query k >>= maybe x undefined
@@ -127,7 +165,7 @@ html rel b = do
     p <- makeRelativeToProject $ "templates/"<>rel<>".html"
     addDependentFile p
     src <- T.readFile p
-    let src' = foldr (uncurry replace) src
+    let src' = foldr (uncurry replace . bimap pack pack) src
             [ ("{%", "<%")
             , ("%}", "%>")
             , ("{/", "<%>")
@@ -141,21 +179,36 @@ html rel b = do
             , ("\"/>", "\")/>")
             , ("required", "required=True")
             ]
-    SigE <$> quoteExp hsx (unpack if b then "<%>"<>src'<>"</%>" else src') <*> [t| XMLGenT (HSPT XML App) _ |]
+    SigE <$> quoteExp hsx (unpack if b then pack "<%>"<>src'<>pack "</%>" else src') <*> [t| XMLGenT (HSPT XML App) _ |]
 
 template :: String -> ExpQ
 template p = [| runHTML $ base $(html p True) |]
 
+form :: App (Maybe String) -> App Response -> App Response
+form post get = msum
+    [ method POST >> msum [post, return Nothing] >>= maybe get redirect
+    , method GET >> get
+    ]
+
 class ToText a where
     toText :: a -> String
 
-instance ToText Text where
+instance {-# OVERLAPPING #-} ToText Text where
     toText = unpack
 
-instance ToText (Id a) where
+instance Show a => ToText a where
     toText = show
 
 json :: FromJSON a => String -> App a
 json n = App (lift ask) >>= \d -> case fromJSON <$> d !? n of
     Just (Success x) -> return x
     _ -> mzero
+
+arg :: FromReqURI a => String -> App a
+arg = lookRead
+
+argStr :: String -> App String
+argStr = look
+
+argText :: String -> App Text
+argText = lookText'

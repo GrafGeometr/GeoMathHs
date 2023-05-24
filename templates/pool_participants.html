@@ -1,0 +1,27 @@
+{% extends "pool_header.html" %}
+{% block pool_body %}
+<style>
+    #participants_href {
+        color: rgb(70, 178, 250);
+    }
+</style>
+<div>
+    <table>
+        <tbody>
+            <tr style="background-color: white;">
+                <th>Пользователь</th>
+                <th>Роль</th>
+            </tr>
+            {% for userpool in current_pool.get_users() %}
+            <tr style="font-size: 15px; background-color: white;">
+                <td>{{ userpool.user.name }}</td>
+                {% if userpool.role == 'Owner' %} <td style="color: orange;">Владелец</td>
+                {% elif userpool.role == 'Participant' %} <td style="color: green;">Участник</td>
+                {% elif userpool.role == 'Invited' %} <td style="color: gray;">Приглашённый</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

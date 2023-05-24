@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .profile_header_href {
+        margin: 10px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        padding-left: 15px;
+        padding-right: 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: black;
+    }
+    .profile_header_href:hover {
+        background-color: #dadada;
+    }
+</style>
+<div style="display: flex; flex-direction: row;">
+    <a id="profile_about_href" class="profile_header_href" href="/profile/{{ current_user.name }}">Основное</a>
+    <a id="profile_pools_href" class="profile_header_href" href="/profile/{{ current_user.name }}/pools">Пулы</a>
+    <a id="profile_groups_href" class="profile_header_href" href="/profile/{{ current_user.name }}/groups">Кружки</a>
+    <a id="profile_settings_href" class="profile_header_href" href="/profile/{{ current_user.name }}/settings">Настройки</a>
+</div>
+<div style="width: 100%; height: 1px; background-color: rgb(197, 197, 197); margin-bottom: 15px;"></div>
+
+<div style="display: flex; flex-direction: row; width: 100%;">
+    <div style="display: flex; flex-direction: column; margin-right: 20px;">
+        <img src="/static/images/user.png" style="width: 200px; height: 200px; border: 2px solid rgb(70, 178, 250); border-radius: 50%; mix-blend-mode: multiply;">
+        <span style="color: gray; font-size: 20px; text-align: center; margin-top: 10px;">{{ current_user.name }}</span>
+    </div>
+    {% block profile_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "profile.html" %}
+{% block profile_content %}
+<style>
+    #profile_pools_href {
+        border-bottom: 3px solid rgb(70, 178, 250);
+    }
+</style>
+    <script>
+        function Accept(pool_hashed_id) {
+            var data = {'pool_hashed_id' : pool_hashed_id};
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/accept_pool_invitation', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    document.getElementById("pools_block").innerHTML = this.responseText;
+                }
+            }
+            xhr.send(JSON.stringify(data));
+        }
+        function Decline(pool_hashed_id) {
+            var data = {'pool_hashed_id' : pool_hashed_id};
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/decline_pool_invitation', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    document.getElementById("pools_block").innerHTML = this.responseText;
+                }
+            }
+            xhr.send(JSON.stringify(data));
+        }
+    </script>
+    <style>
+        table {
+        border-collapse: collapse;
+        }
+
+        table tr {
+        border-bottom: 1px solid rgb(192, 192, 192);
+        }
+        table tr:hover td{
+            background-color: #dadada;
+        }
+
+        table tr:last-child {
+        border: 0;
+        }
+    </style>
+    <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; flex-direction: row; justify-content: space-between;">
+            <input type="text" placeholder="Найти пул..." style="font-size: 20px;">
+            <a href="/pools/create" style="text-decoration: none; color: white; background-color: #1f883d; font-size: 20px; padding: 10px; border-radius: 5px;">Новый пул</a>
+        </div>
+
+        <div style="display: flex; flex-direction: column; margin-top: 15px; border: 2px solid rgb(70, 178, 250); background-color: rgb(255,255,255);">
+            <div>
+                <table>
+                    <tbody>
+                        <tr style="background-color: white;">
+                            <th style="padding-top: 5px; padding-bottom: 5px; padding-left: 30px; padding-right: 30px;">Название пула</th>
+                            <th style="padding-top: 5px; padding-bottom: 5px; padding-left: 30px; padding-right: 30px;">Роль</th>
+                            <th style="padding-top: 5px; padding-bottom: 5px; padding-left: 30px; padding-right: 30px;">Приглашение</th>
+                            <th style="padding-top: 5px; padding-bottom: 5px; padding-left: 30px; padding-right: 30px;">Время вступления</th>
+                            <th style="padding-top: 5px; padding-bottom: 5px; padding-left: 30px; padding-right: 30px;">Время приглашения</th>
+                        </tr>
+                        {% for userpool in current_user.get_pools() %}
+                        <tr style="font-size: 15px; background-color: white; height: 50px;">
+                            <td style="text-align: center;"><a href="/pool/{{ userpool.pool.hashed_id }}/problems" style="color: black; font-weight: bold; text-decoration: none;">{{ userpool.pool.name }}</a></td>
+                            {% if userpool.role == 'Owner' %} <td style="color: orange; text-align: center;">Владелец</td>
+                            {% elif userpool.role == 'Participant' %} <td style="color: green; text-align: center;">Участник</td>
+                            {% elif userpool.role == 'Invited' %} <td style="color: gray; text-align: center;">Приглашённый</td>
+                            {% endif %}
+                            {% if userpool.role != 'Invited' %} <td style="color: blue; text-align: center;">Принято</td>
+                            {% else %}
+                            <td>
+                                <div style="display: flex; flex-direction: row; justify-content: center;">
+                                    <a href="javascript:Accept('{{ userpool.pool.hashed_id }}');" style="color: #00bb00; margin: 5px; text-decoration: none;">Принять</a>
+                                    <a href="javascript:Decline('{{ userpool.pool.hashed_id }}');" style="color: #bb0000; margin: 5px; text-decoration: none;">Отклонить</a>
+                                </div>
+                            </td>
+                            {% endif %}
+                            <td style="text-align: center;">
+                                ???
+                            </td>
+                            <td style="text-align: center;">
+                                ???
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

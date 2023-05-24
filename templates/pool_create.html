@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<script>
+    function create() {
+        var name = document.getElementById("name").value;
+        var data = {'name' : name};
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/create_new_pool', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    document.location.href = this.responseText;
+                }
+            };
+        xhr.send(JSON.stringify(data));
+    }
+
+</script>
+<style>
+    .main_div {
+        margin-top: 100px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .create_form {
+        width: 50%;
+        border: 2px solid rgb(70, 178, 250);
+        border-radius: 10px;
+        
+        background-color: rgb(255,255,255);
+
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        align-items: center;
+        padding: 15px;
+    }
+    .greeting {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+    }
+    .input_form {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .input_field_name {
+        margin-bottom: 10px;
+        font-size: 20px;
+    }
+    .input_field {
+        height: 100%;
+        width: 80%;
+        font-size: 25px;
+        background-color:#f4f4f4;
+        border: 2px solid #dddddd;
+        border-radius: 5px;
+        padding: 5px;
+    }
+    .submit_button {
+        width: 55%;
+        height: 50px;
+        margin-top: 20px;
+        border: 0;
+        border-radius: 10px;
+        font-size: 17px;
+        font-weight: bold;
+        color: rgb(255,255,255);
+        background-color: #1f883d;
+        cursor: pointer;
+    }
+</style>
+<div style="margin-top: 100px; display: flex; justify-content: center; align-items: center;">
+<form class="create_form" action="javascript:create();">
+    <div class="greeting">
+        <div style="font-size: 25px; font-weight: bold; margin-bottom: 10px;">Работай над задачами в команде!</div>
+        <div style="font-size: 15px">Создание пула</div>
+    </div>
+    <div class="input_form">
+        <div class="input_field_name">Название</div>
+        <input type="text" id="name" class="input_field" required >
+    </div>
+    <input class="submit_button" type="submit" value="Создать">
+</form>
+</div>
+{% endblock %}

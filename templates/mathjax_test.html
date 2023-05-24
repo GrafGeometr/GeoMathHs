@@ -1,0 +1,22 @@
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [ ['$','$'], ["\\(","\\)"] ],processEscapes: true}});
+</script>
+
+<script
+  type="text/javascript"
+  charset="utf-8"
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+<script>
+function f() {
+  var input = document.getElementById("latex_input");
+  document.getElementById("latex_output").innerHTML = input.value;
+  MathJax.Hub.Queue(["Typeset",MathJax.Hub,"latex_output"]);
+  }
+</script>
+
+<textarea id="latex_input" cols="25" rows="5" onchange="f()">
+</textarea>
+
+<p id="latex_output"></p>

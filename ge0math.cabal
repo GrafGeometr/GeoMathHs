@@ -35,5 +35,6 @@ executable ge0math
                     , directory
                     , time
                     , with-utf8
+                    , random
     hs-source-dirs:   app
     default-language: GHC2021

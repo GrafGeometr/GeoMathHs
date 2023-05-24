@@ -1,0 +1,155 @@
+<script>
+    function remove_email(email) {
+        var data = {'email' : email};
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/remove_email', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                document.getElementById("emails_block").innerHTML = this.responseText;
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+
+    function add_email() {
+        var email = document.getElementById("add_email_input").value;
+        var data = {'email' : email};
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/add_email', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                document.getElementById("emails_block").innerHTML = this.responseText;
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+
+    function send_verifying_link(email) {
+        var data = {'email' : email};
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/send_verifying_link', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                document.getElementById("emails_block").innerHTML = this.responseText;
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+</script>
+<style>
+    .checker_img {
+    mix-blend-mode: multiply;
+    height: 50px;
+    }
+    .email_verify_button {
+        height: 50%;
+        width: 60%;
+        margin-left: 10px;
+        margin-right: 10px;
+        border: 0;
+        border-radius: 10px;
+        font-size: 17px;
+        font-weight: bold;
+        color: rgb(255,255,255);
+        background-color: rgb(255, 97, 116);
+        cursor: pointer;
+    }
+    .remove_email_button {
+        border: 0;
+        background-color: transparent;
+        cursor: pointer;
+    }
+    .emails_list {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        border: 2px solid rgb(70, 178, 250);
+        border-radius: 10px;
+        background-color: rgb(255,255,255);
+        width: 100%;
+        margin-bottom: 15px;
+    }
+</style>
+<h2>Мои почты</h2>
+<div class="emails_list">
+{% for email in current_user.emails %}
+    <div style="display: flex; justify-content: space-between; align-items: center; height: 100px; margin-left: 15px; margin-right: 15px;">
+        <div style="display: flex; height: 100%; width: 400px; flex-direction: row; justify-content: flex-start; align-items: center;">
+            {% if email.verified %}
+                <img class = "checker_img" src="/static/images/check.png" alt="check">
+            {% else %}
+                <img class = "checker_img" src="/static/images/cancel.png" alt="cancel">
+            {% endif %}
+            <h2 style="margin-left: 10px; margin-right: 10px;">{{ email.name }}</h2>
+        </div>
+        <div style="display: flex; height: 100%; width: 300px; flex-direction: row; justify-content: flex-end; align-items: center;">
+            {% if not email.verified %}
+                <button class = "email_verify_button" onclick="send_verifying_link('{{ email.name }}')">Подтвердить</button>
+            {% endif %}
+            <button class = "remove_email_button" onclick="remove_email('{{ email.name }}')"><img class = "checker_img" src="/static/images/bin.png" alt="bin"></button>
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+<style>
+.add_email_form {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 10px;
+}
+.input_form {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        margin-bottom: 10px;
+}
+.input_field_name {
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+.input_field {
+    height: 100%;
+    width: 60%;
+    font-size: 25px;
+    background-color:#f4f4f4;
+    border: 2px solid #dddddd;
+    border-radius: 5px;
+    padding: 5px;
+}
+.add_email_button {
+        width: 55%;
+        height: 50px;
+        margin-top: 20px;
+        border: 0;
+        border-radius: 10px;
+        font-size: 17px;
+        font-weight: bold;
+        color: rgb(255,255,255);
+        background-image: radial-gradient(rgb(137, 196, 238), rgb(70, 178, 250));
+        cursor: pointer;
+    }
+</style>
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="notification {{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+<form class="add_email_form" action="javascript:add_email();">
+    <div class="input_form">
+        <div class="input_field_name">Добавить почту:</div>
+        <input type="text" id="add_email_input" class="input_field" required>
+    </div>
+    <input class="add_email_button" type="submit" value="Добавить">
+</form>

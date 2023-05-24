@@ -1,0 +1,11 @@
+{% extends "profile.html" %}
+{% block profile_content %}
+<style>
+    #profile_settings_href {
+        border-bottom: 3px solid rgb(70, 178, 250);
+    }
+</style>
+<div id="emails_block" style="display: flex; flex-direction: column;">
+{% include "emails_list.html" %}
+</div>
+{% endblock %}

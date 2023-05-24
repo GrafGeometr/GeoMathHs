@@ -3,27 +3,35 @@ module Types where
 import DB
 import Lenses
 
+import Data.Aeson (FromJSON)
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Password.Bcrypt (Bcrypt, PasswordHash)
 import Happstack.Server (FromReqURI)
+import HSP (EmbedAsChild, XML)
+import HSP.Monad (HSPT)
 
-newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI)
+newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI, FromJSON, EmbedAsChild (HSPT XML m))
+
+newtype UserName = UserName Text deriving newtype (Eq, Ord, Show, Read, FromReqURI, FromJSON, EmbedAsChild (HSPT XML m))
+
+newtype Email = Email Text deriving newtype (Eq, Ord, Show, Read, FromReqURI, FromJSON, EmbedAsChild (HSPT XML m))
 
 data User = User
-    { userName :: Text
+    { userName :: UserName
     , userPasswordHash :: PasswordHash Bcrypt
     , userDateCreated :: UTCTime
-    , userEmails :: Set Text
+    , userEmails :: Set Email
     , userPools :: Set (Id Pool)
     } deriving (Show, Read)
 
-newtype VerificationToken = VerificationToken Text deriving (Show, Read)
+newtype VerificationToken = VerificationToken Text deriving newtype (Eq, Ord, Show, Read, FromReqURI, FromJSON, EmbedAsChild (HSPT XML m))
 
 data EmailInfo = EmailInfo
-    { emailDateCreated :: UTCTime
+    { emailUser :: Id User
+    , emailDateCreated :: UTCTime
     , emailVerificationToken :: Maybe VerificationToken -- Nothing if verified
     } deriving (Show, Read)
 
