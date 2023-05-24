@@ -3,6 +3,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module App (
+    module Prelude,
     module DB,
     module Types,
     module HSP, HSPT,
@@ -16,8 +17,11 @@ module App (
     tryQuery, checkUnique,
     HTML, liftHTML, unHTML, runHTML, html, template, form,
     ToText(..),
-    json, arg, argStr, argText
+    json, arg, argStr, argText,
+    log,
 ) where
+
+import Prelude hiding (log, readFile)
 
 import DB
 import Lenses
@@ -114,6 +118,7 @@ loginUser :: Id User -> Text -> App ()
 loginUser i pass = do
     newCookie "userId" i
     newCookie "pass" pass
+    log $ "Logged in: "<>show i
 
 currentUser :: App (Maybe (Id User))
 currentUser = readMaybe <$> lookCookieValue "userId"
@@ -138,6 +143,7 @@ generateToken = getStdRandom $ \g ->
 createToken :: Email -> EmailInfo -> App ()
 createToken email info = do
     token <- generateToken
+    log $ "Generated token for "<>show email<>show token
     update email $ info & _emailVerificationToken ?~ token
 
 tryQuery :: MonadDB k v DBs App => k -> (v -> App Response) -> App Response
@@ -186,7 +192,7 @@ template p = [| runHTML $ base $(html p True) |]
 
 form :: App (Maybe String) -> App Response -> App Response
 form post get = msum
-    [ method POST >> msum [post, return Nothing] >>= maybe get redirect
+    [ method POST >> msum [post, return Nothing] >>= maybe (log "invalid post data" >> get) redirect
     , method GET >> get
     ]
 
@@ -212,3 +218,8 @@ argStr = look
 
 argText :: String -> App Text
 argText = lookText'
+
+log :: String -> App ()
+log s = liftIO do
+    now <- getCurrentTime
+    appendFile "log.txt" (show now<>": "<>s<>"\n")

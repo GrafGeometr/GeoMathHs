@@ -12,6 +12,7 @@ import qualified Data.Map as M (Map, insert, delete, (!?), lookupMax)
 import Happstack.Server (FromReqURI)
 import Language.Haskell.TH (mkName, Exp(VarE, ConE), DecsQ, Con(RecC), Type(ConT, AppT), Dec(DataD), Name, Info(TyConI), nameBase, reify)
 import System.Directory (doesFileExist)
+import System.IO (readFile')
 
 newtype Id a = Id Int deriving newtype (Eq, Ord, Enum, Show, Read, FromReqURI)
 
@@ -48,11 +49,11 @@ initDB = do
     let p = "db/"<>path @a @db @k
     ex <- doesFileExist p
     dbFromList <$> if ex
-        then fmap read . lines <$> readFile p
+        then fmap read . lines <$> readFile' p
         else return []
 
 add :: forall a k v. (Show k, Show v, HasDB a DB k v) => DBAction k v -> IO ()
-add x = appendFile (path @a @DB @k) $ show x<>"\n"
+add x = appendFile ("db/"<>path @a @DB @k) $ show x<>"\n"
 
 insert :: MonadDB (Id v) v a m => v -> m (Id v)
 insert v = ask >>= \ref -> liftIO do
