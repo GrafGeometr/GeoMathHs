@@ -3,7 +3,7 @@ module Lenses (
     module Control.Lens
 ) where
 
-import Control.Lens hiding (makeLenses)
+import Control.Lens hiding (makeLenses, set)
 import Language.Haskell.TH (mkName,  nameBase, Name, DecsQ)
 
 makeLenses :: Name -> DecsQ

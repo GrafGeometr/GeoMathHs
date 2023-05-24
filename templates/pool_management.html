@@ -1,5 +1,4 @@
-{% extends "pool_header.html" %}
-{% block pool_body %}
+{% poolHeader poolId poolName %}
 <style>
     #management_href {
         color: rgb(70, 178, 250);
@@ -10,7 +9,7 @@
 <script>
     function add_participant() {
         var login = document.getElementById("login1").value;
-        var pool_hashed_id = "{{ current_pool.hashed_id }}";
+        var pool_hashed_id = "<% poolId %>";
         var data = {'login' : login, 'pool_hashed_id' : pool_hashed_id};
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/add_participant', true);
@@ -24,7 +23,7 @@
     }
     function remove_participant() {
         var login = document.getElementById("login2").value;
-        var pool_hashed_id = "{{ current_pool.hashed_id }}";
+        var pool_hashed_id = "{% poolId %}";
         var data = {'login' : login, 'pool_hashed_id' : pool_hashed_id};
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/remove_participant', true);
@@ -105,9 +104,9 @@
     </div>
     <div class="input_form">
         <div class="input_field_name">Логин</div>
-        <input type="text" id="login1" class="input_field" required >
+        <input type="text" id="login1" class="input_field" required/>
     </div>
-    <input class="submit_button" type="submit" value="Добавить">
+    <input class="submit_button" type="submit" value="Добавить"/>
 </form>
 <form class="form" action="javascript:remove_participant();">
     <div class="greeting">
@@ -116,10 +115,7 @@
     </div>
     <div class="input_form">
         <div class="input_field_name">Логин</div>
-        <input type="text" id="login2" class="input_field" required >
+        <input type="text" id="login2" class="input_field" required/>
     </div>
-    <input class="submit_button" type="submit" value="Удалить">
+    <input class="submit_button" type="submit" value="Удалить"/>
 </form>
-
-
-{% endblock %}

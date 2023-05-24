@@ -5,15 +5,17 @@
 module App (
     module Prelude,
     module DB,
+    module Lenses,
     module Types,
     module HSP, HSPT,
     module Happstack.Server,
-    msum, optional, guard, liftIO,
+    msum, optional, guard, liftIO, forM,
     fromMaybe,
     getCurrentTime,
+    Text,
 
     App, runApp,
-    redirect, hashPass, checkPass, loginUser, currentUser, withUser, createToken,
+    redirect, hashPass, checkPass, loginUser, logoutUser, currentUser, withUser, createToken,
     tryQuery, checkUnique,
     HTML, liftHTML, unHTML, runHTML, html, template, form,
     ToText(..),
@@ -29,7 +31,7 @@ import Types
 
 import Control.Applicative (Alternative, optional)
 import Control.Concurrent (putMVar)
-import Control.Monad (MonadPlus(..), msum, guard)
+import Control.Monad (MonadPlus(..), msum, guard, forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans (lift)
 import Control.Monad.Reader (ReaderT (..), MonadReader (..))
@@ -41,7 +43,7 @@ import Data.Maybe (fromMaybe)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
 import Data.Text (Text, pack, unpack, replace)
 import qualified Data.Text.IO.Utf8 as T (readFile)
-import qualified Data.Text.Lazy as L (Text)
+import qualified Data.Text.Lazy as L (Text, unpack)
 import Data.Time (UTCTime, getCurrentTime)
 import Happstack.Server hiding (redirect)
 import Happstack.Server.HSP.HTML ()
@@ -78,12 +80,18 @@ newtype App a = App { unApp :: ReaderT (IORef DBs) (ReaderT (Map String Value) (
 instance MonadFail App where
     fail _ = mzero
 
+instance MonadFail HTML where
+    fail = lift . lift . fail
+
 instance EmbedAsAttr (HSPT XML App) (Attr a v) => EmbedAsAttr (HSPT XML App) (Attr a (App v)) where
     asAttr (a := v) = liftHTML v >>= asAttr . (a:=)
 
 instance EmbedAsAttr (HSPT XML App) (Attr a v) => EmbedAsAttr (HSPT XML App) (Attr a (Maybe v)) where
     asAttr (a := Just v) = asAttr $ a := v
     asAttr (_ := Nothing) = return []
+
+instance EmbedAsChild (HSPT XML App) (Id a) where
+    asChild = asChild . show
 
 decodeJsonBody :: ServerPartT IO (Map String Value)
 decodeJsonBody = askRq >>= \rq -> takeRequestBody rq >>=
@@ -120,6 +128,11 @@ loginUser i pass = do
     newCookie "pass" pass
     log $ "Logged in: "<>show i
 
+logoutUser :: App ()
+logoutUser = do
+    expireCookie "userId"
+    expireCookie "pass"
+
 currentUser :: App (Maybe (Id User))
 currentUser = readMaybe <$> lookCookieValue "userId"
 
@@ -147,7 +160,9 @@ createToken email info = do
     update email $ info & _emailVerificationToken ?~ token
 
 tryQuery :: MonadDB k v DBs App => k -> (v -> App Response) -> App Response
-tryQuery k f = query k >>= maybe (notFound $ toResponse "Given ID was not found") f
+tryQuery k f = query k >>= maybe (do
+    log $ "Query failed: "<>show k
+    notFound $ toResponse "Given ID was not found") f
 
 checkUnique :: forall v k. MonadDB k v DBs App => k -> App Response -> App Response
 checkUnique k x = query k >>= maybe x undefined
@@ -201,6 +216,12 @@ class ToText a where
 
 instance {-# OVERLAPPING #-} ToText Text where
     toText = unpack
+
+instance {-# OVERLAPPING #-} ToText L.Text where
+    toText = L.unpack
+
+instance {-# OVERLAPPING #-} ToText String where
+    toText = id
 
 instance Show a => ToText a where
     toText = show

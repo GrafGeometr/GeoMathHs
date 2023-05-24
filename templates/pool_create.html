@@ -1,11 +1,9 @@
-{% extends "base.html" %}
-{% block content %}
 <script>
     function create() {
         var name = document.getElementById("name").value;
         var data = {'name' : name};
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/create_new_pool', true);
+        xhr.open('POST', '/pools/create', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
@@ -84,9 +82,8 @@
     </div>
     <div class="input_form">
         <div class="input_field_name">Название</div>
-        <input type="text" id="name" class="input_field" required >
+        <input type="text" id="name" class="input_field" required/>
     </div>
-    <input class="submit_button" type="submit" value="Создать">
+    <input class="submit_button" type="submit" value="Создать"/>
 </form>
 </div>
-{% endblock %}

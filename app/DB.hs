@@ -7,6 +7,7 @@ import Lenses
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader, ask)
+import Data.Aeson (FromJSON)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import qualified Data.Map as M (Map, insert, delete, (!?), lookupMax)
 import Happstack.Server (FromReqURI)
@@ -14,7 +15,7 @@ import Language.Haskell.TH (mkName, Exp(VarE, ConE), DecsQ, Con(RecC), Type(ConT
 import System.Directory (doesFileExist)
 import System.IO (readFile')
 
-newtype Id a = Id Int deriving newtype (Eq, Ord, Enum, Show, Read, FromReqURI)
+newtype Id a = Id Int deriving newtype (Eq, Ord, Enum, Show, Read, FromReqURI, FromJSON)
 
 newtype DB k v = DB (M.Map k v)
 

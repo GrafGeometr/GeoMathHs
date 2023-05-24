@@ -1,5 +1,4 @@
-{% extends "pool_header.html" %}
-{% block pool_body %}
+{% poolHeader poolId poolName %}
 <style>
     #participants_href {
         color: rgb(70, 178, 250);
@@ -12,16 +11,16 @@
                 <th>Пользователь</th>
                 <th>Роль</th>
             </tr>
-            {% for userpool in current_pool.get_users() %}
+            {% map (\(name, role) ->
             <tr style="font-size: 15px; background-color: white;">
-                <td>{{ userpool.user.name }}</td>
-                {% if userpool.role == 'Owner' %} <td style="color: orange;">Владелец</td>
-                {% elif userpool.role == 'Participant' %} <td style="color: green;">Участник</td>
-                {% elif userpool.role == 'Invited' %} <td style="color: gray;">Приглашённый</td>
-                {% endif %}
-            </tr>
-            {% endfor %}
+                <td>{% name %}</td>
+                {% case role of
+                Owner -> <td style="color: orange;">Владелец</td>
+                Participant -> <td style="color: green;">Участник</td>
+                Invited -> <td style="color: gray;">Приглашённый</td>
+                %}
+            </tr>) members
+             %}
         </tbody>
     </table>
 </div>
-{% endblock %}

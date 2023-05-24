@@ -44,7 +44,7 @@ data Problem = Problem
 
 data Role
     = Owner
-    | Participiant
+    | Participant
     | Invited
     deriving (Show, Read)
 
