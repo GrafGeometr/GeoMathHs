@@ -31,7 +31,7 @@ import Types
 
 import Control.Applicative (Alternative, optional)
 import Control.Concurrent (putMVar)
-import Control.Monad (MonadPlus(..), msum, guard, forM)
+import Control.Monad (MonadPlus(..), msum, guard, forM, (>=>))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans (lift)
 import Control.Monad.Reader (ReaderT (..), MonadReader (..))
@@ -42,6 +42,7 @@ import Data.Map (Map, (!?))
 import Data.Maybe (fromMaybe)
 import Data.Password.Bcrypt (checkPassword, hashPassword, mkPassword, Bcrypt, PasswordCheck(..), PasswordHash)
 import Data.Text (Text, pack, unpack, replace)
+import qualified Data.Text as T (null)
 import qualified Data.Text.IO.Utf8 as T (readFile)
 import qualified Data.Text.Lazy as L (Text, unpack)
 import Data.Time (UTCTime, getCurrentTime)
@@ -78,7 +79,7 @@ newtype App a = App { unApp :: ReaderT (IORef DBs) (ReaderT (Map String Value) (
              )
 
 instance MonadFail App where
-    fail _ = mzero
+    fail err = log ("Failed: "<>show err) >> mzero
 
 instance MonadFail HTML where
     fail = lift . lift . fail
@@ -108,8 +109,8 @@ runApp x = do
         dec <- decodeJsonBody
         unApp x `runReaderT` ref `runReaderT` dec
 
-newCookie :: Show a => String -> a -> App ()
-newCookie name = addCookie (MaxAge 30000000) . mkCookie name . show
+newCookie :: ToText a => String -> a -> App ()
+newCookie name = addCookie (MaxAge 30000000) . mkCookie name . toText
 
 hashPass :: Text -> App (PasswordHash Bcrypt)
 hashPass = hashPassword . mkPassword
@@ -134,7 +135,7 @@ logoutUser = do
     expireCookie "pass"
 
 currentUser :: App (Maybe (Id User))
-currentUser = readMaybe <$> lookCookieValue "userId"
+currentUser = (>>= readMaybe) <$> optional (lookCookieValue "userId")
 
 withUser :: (Id User -> User -> App Response) -> App Response
 withUser f = msum
@@ -223,6 +224,11 @@ instance {-# OVERLAPPING #-} ToText L.Text where
 instance {-# OVERLAPPING #-} ToText String where
     toText = id
 
+deriving instance {-# OVERLAPPING #-} ToText Tag
+deriving instance {-# OVERLAPPING #-} ToText UserName
+deriving instance {-# OVERLAPPING #-} ToText Email
+deriving instance {-# OVERLAPPING #-} ToText VerificationToken
+
 instance Show a => ToText a where
     toText = show
 
@@ -235,10 +241,10 @@ arg :: FromReqURI a => String -> App a
 arg = lookRead
 
 argStr :: String -> App String
-argStr = look
+argStr = look >=> \s -> if null s then mzero else return s
 
 argText :: String -> App Text
-argText = lookText'
+argText = lookText' >=> \s -> if T.null s then mzero else return s
 
 log :: String -> App ()
 log s = liftIO do

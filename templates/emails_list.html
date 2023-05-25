@@ -6,21 +6,21 @@
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4 && xhr.status === 200) {
-                document.getElementById("emails_block").innerHTML = this.responseText;
+                document.getElementById('emails_block').innerHTML = this.responseText;
             }
         };
         xhr.send(JSON.stringify(data));
     }
 
     function add_email() {
-        var email = document.getElementById("add_email_input").value;
+        var email = document.getElementById('add_email_input').value;
         var data = {'email' : email};
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/add_email', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4 && xhr.status === 200) {
-                document.getElementById("emails_block").innerHTML = this.responseText;
+                document.getElementById('emails_block').innerHTML = this.responseText;
             }
         };
         xhr.send(JSON.stringify(data));
@@ -33,7 +33,7 @@
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4 && xhr.status === 200) {
-                document.getElementById("emails_block").innerHTML = this.responseText;
+                document.getElementById('emails_block').innerHTML = this.responseText;
             }
         };
         xhr.send(JSON.stringify(data));
@@ -146,10 +146,10 @@
     {% endfor %}
 {% endwith %}
 
-<form class="add_email_form" action="javascript:add_email();">
+<form class="add_email_form" method="post">
     <div class="input_form">
         <div class="input_field_name">Добавить почту:</div>
-        <input type="text" id="add_email_input" class="input_field" required>
+        <input type="text" name="add_email_input" class="input_field" required>
     </div>
     <input class="add_email_button" type="submit" value="Добавить">
 </form>

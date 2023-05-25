@@ -25,7 +25,7 @@ main = runApp $ do
         , dir "decline_pool_invitation" declinePoolInvitation
         , dir "pool" $ path pool
         , dirs "pools/create" createPool
-        , dir "add_participant" addParticipiant
+        , dir "add_participant" addParticipant
         , dir "remove_participant" removeParticipant
         , dir "static" $ serveDirectory DisableBrowsing [] "static"
         ]
@@ -53,10 +53,10 @@ login = form (do
 
 register :: App Response
 register = form (do
-    userName <- json "login"
-    email <- json "email"
-    password <- json "password"
-    repeat_password <- json "repeat_password"
+    userName <- arg "login"
+    email <- arg "email"
+    password <- arg "password"
+    repeat_password <- arg "repeat_password"
 
     guard $ password == repeat_password
 
@@ -64,6 +64,8 @@ register = form (do
     now <- liftIO getCurrentTime
     i <- insert User{userEmails = S.singleton email, userPools = mempty, userDateCreated = now, ..}
     log $ "Registred: "<>show i
+
+    update userName i  
 
     createToken email EmailInfo {emailVerificationToken=Nothing, emailUser=i, emailDateCreated=now}
     loginUser i password
@@ -133,12 +135,12 @@ pool poolId = withUser \userId _ -> tryQuery poolId \Pool{..} ->
 
 createPool :: App Response
 createPool = withUser \userId _ -> form (do
-    poolName <- json "name"
+    poolName <- arg "name"
     poolId <- insert Pool {poolProblems=mempty, poolMembers=M.singleton userId Owner, ..}
     return $ Just $ "/pool/"<>show poolId<>"/problems") $(template "pool_create")
 
-addParticipiant :: App Response
-addParticipiant = withUser \inviter _ -> do
+addParticipant :: App Response
+addParticipant = withUser \inviter _ -> do
     method POST
     name :: UserName <- json "login"
     poolId <- json "pool_hashed_id"

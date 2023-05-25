@@ -9,28 +9,28 @@
 <script>
     function add_participant() {
         var login = document.getElementById("login1").value;
-        var pool_hashed_id = "<% poolId %>";
+        var pool_hashed_id = {% poolId %};
         var data = {'login' : login, 'pool_hashed_id' : pool_hashed_id};
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/add_participant', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
-                    document.findElementById("pools_block").innerHTML = this.responseText;
+                    document.getElementById('pools_block').innerHTML = this.responseText;
                 }
             };
         xhr.send(JSON.stringify(data));
     }
     function remove_participant() {
         var login = document.getElementById("login2").value;
-        var pool_hashed_id = "{% poolId %}";
+        var pool_hashed_id = {% poolId %};
         var data = {'login' : login, 'pool_hashed_id' : pool_hashed_id};
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/remove_participant', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
-                    document.findElementById("pools_block").innerHTML = this.responseText;
+                    document.getElementById('pools_block').innerHTML = this.responseText;
                 }
             };
         xhr.send(JSON.stringify(data));

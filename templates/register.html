@@ -58,46 +58,27 @@
         cursor: pointer;
     }
 </style>
-<script>
-    function register() {
-        var login = document.getElementById("login").value;
-        var email = document.getElementById("email").value;
-        var password = document.getElementById("password").value;
-        var repeat_password = document.getElementById("repeat_password").value;
-        var data = {'login' : login, 'email' : email, 'password' : password, 'repeat_password' : repeat_password};
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/register', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    document.location.href = this.responseText;
-                }
-            };
-        xhr.send(JSON.stringify(data));
-    }
-
-</script>
 <div class="main_div">
-    <form class="register_form" action="javascript:register();">
+    <form class="register_form" method="POST">
         <div class="greeting">
             <div style="font-size: 25px; font-weight: bold; margin-bottom: 10px;">Первый раз на GeoMath?</div>
             <div style="font-size: 15px">Регистрация на сайте</div>
         </div>
         <div class="input_form">
             <div class="input_field_name">Логин</div>
-            <input type="text" id="login" class="input_field" required/>
+            <input type="text" name="login" class="input_field" required/>
         </div>
         <div class="input_form">
             <div class="input_field_name">Email</div>
-            <input type="email" id="email" class="input_field" required/>
+            <input type="email" name="email" class="input_field" required/>
         </div>
         <div class="input_form">
             <div class="input_field_name">Пароль</div>
-            <input type="password" id="password" class="input_field" required/>
+            <input type="password" name="password" class="input_field" required/>
         </div>
         <div class="input_form">
             <div class="input_field_name">Повторите пароль</div>
-            <input type="password" id="repeat_password" class="input_field" required/>
+            <input type="password" name="repeat_password" class="input_field" required/>
         </div>
         <input class="register_button" type="submit" value="Зарегистрироваться"/>
     </form>
