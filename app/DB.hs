@@ -12,6 +12,7 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import qualified Data.Map as M (Map, insert, delete, (!?), lookupMax)
 import Happstack.Server (FromReqURI)
 import Language.Haskell.TH (mkName, Exp(VarE, ConE), DecsQ, Con(RecC), Type(ConT, AppT), Dec(DataD), Name, Info(TyConI), nameBase, reify)
+import Prelude
 import System.Directory (doesFileExist)
 import System.IO (readFile')
 

@@ -4,7 +4,7 @@ version:            0.1.0.0
 build-type:         Simple
 
 common warnings
-    ghc-options: -Wall -Wno-simplifiable-class-constraints
+    ghc-options: -Wall -Wno-simplifiable-class-constraints -Wno-partial-type-signatures -Wno-name-shadowing
 
 executable ge0math
     import:           warnings
@@ -13,12 +13,18 @@ executable ge0math
                     , DB
                     , App
                     , Lenses
+                    , Imports
+                    , Pages.Auth
+                    , Pages.Navigation
+                    , Pages.Pool
     default-extensions: TemplateHaskell
                     , QuasiQuotes
                     , BlockArguments
                     , RecordWildCards
                     , DerivingStrategies
                     , AllowAmbiguousTypes
+                    , PartialTypeSignatures
+                    , NoImplicitPrelude
     build-depends:    base ^>=4.17.0.0
                     , template-haskell
                     , happstack-server

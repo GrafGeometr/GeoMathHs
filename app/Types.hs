@@ -12,6 +12,7 @@ import Data.Password.Bcrypt (Bcrypt, PasswordHash)
 import Happstack.Server (FromReqURI)
 import HSP (EmbedAsChild, XML)
 import HSP.Monad (HSPT)
+import Prelude
 
 newtype Tag = Tag { tagName :: Text } deriving newtype (Eq, Ord, Show, Read, FromReqURI, FromJSON, EmbedAsChild (HSPT XML m))
 
